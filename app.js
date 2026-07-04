@@ -3,6 +3,15 @@ const HISTORY="auto_collimator_v7_history";
 const state={N:40,mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:40,tolerance:0,vals:Array.from({length:40},()=>[null,null,null,null]),meta:{}};
 let result=null, undoStack=[], redoStack=[];
 const $=id=>document.getElementById(id);
+const THEME_KEY="auto_collimator_theme";
+function applyTheme(theme){
+ document.body.classList.toggle("dark", theme==="dark");
+ localStorage.setItem(THEME_KEY, theme);
+ if(result) drawGraph($("graph"),result.data,result.dev,state.N);
+ const pg=$("printGraph"); if(pg && result) drawGraph(pg,result.data,result.dev,state.N);
+}
+function loadTheme(){applyTheme(localStorage.getItem(THEME_KEY)||"light")}
+
 function cloneVals(){return state.vals.map(r=>r.slice())}
 function pushUndo(){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance}); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
 function restore(s){state.vals=s.vals.map(r=>r.slice());state.N=s.N;state.rangeStart=s.rangeStart;state.rangeEnd=s.rangeEnd;state.tolerance=s.tolerance||0;normalize();buildTable();update(false)}
@@ -64,6 +73,7 @@ function history(){try{return JSON.parse(localStorage.getItem(HISTORY)||"[]")}ca
 function saveHistory(){save();const h=history();h.unshift({time:new Date().toLocaleString(),title:`${state.meta.serial||""} ${state.meta.name||""}`.trim()||"測定データ",data:JSON.parse(JSON.stringify(state))});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,50)));renderHistory();alert("履歴保存しました")}
 function renderHistory(){const h=history(),box=$("historyList");box.innerHTML="";h.forEach((item,i)=>{const div=document.createElement("div");div.className="histItem";div.innerHTML=`<span>${item.time} / ${item.title}</span><span><button data-load="${i}">読込</button><button data-del="${i}">削除</button></span>`;box.appendChild(div)});box.querySelectorAll("[data-load]").forEach(b=>b.onclick=()=>{Object.assign(state,h[Number(b.dataset.load)].data);normalize();buildTable();update()});box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const arr=history();arr.splice(Number(b.dataset.del),1);localStorage.setItem(HISTORY,JSON.stringify(arr));renderHistory()})}
 document.addEventListener("DOMContentLoaded",()=>{
+ loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
  buildTable();update(false);renderHistory();
  document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{state.mode=Number(b.dataset.mode);state.row=1;state.buf=currentValue();render()});
@@ -80,4 +90,5 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
  $("inputBtn").onclick=showInput;$("shotBtn").onclick=showShot;$("printBtn").onclick=()=>{showShot();setTimeout(()=>print(),100)};$("backInput1").onclick=showInput;$("doPrint").onclick=()=>print();
+ $("lightBtn").onclick=()=>applyTheme("light");$("darkBtn").onclick=()=>applyTheme("dark");
 });

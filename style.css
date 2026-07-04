@@ -17,3 +17,29 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid 
 .histItem{border:1px solid #ddd;border-radius:8px;padding:8px;margin:6px 0;background:#fafafa;display:flex;gap:6px;justify-content:space-between;align-items:center;flex-wrap:wrap}
 @media print{header,.screenBtns{display:none!important}body{background:#fff}main{padding:0}.card{border:1px solid #000;border-radius:0}#printGraph{height:520px}}
 @media(max-width:520px){.metaGrid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.current strong{font-size:22px}.bigNum{font-size:44px!important}}
+
+
+/* v7.1 dark mode */
+.themeBtn{min-width:44px;font-size:18px;padding:8px 10px}
+body.dark{background:#0f1115;color:#e9edf5}
+body.dark header{background:#05070b;color:#fff;border-bottom:1px solid #2b3445}
+body.dark .card{background:#171b22;border-color:#333d4e;color:#e9edf5}
+body.dark .metaGrid label,body.dark .current span,body.dark .summary span,body.dark .note{color:#b8c0cc}
+body.dark input,body.dark .smallNumInput{background:#0f141c;color:#f5f7fb;border-color:#566276}
+body.dark button{background:#202734;color:#f4f7ff;border-color:#566276}
+body.dark .topBtns button{background:#12376b;color:#fff;border-color:#2e6ac4}
+body.dark .danger{background:#3a1717;color:#ffb5b5;border-color:#8d3a3a}
+body.dark .fileLabel{background:#202734;color:#f4f7ff;border-color:#566276}
+body.dark .progress{background:#303846}
+body.dark .current{background:#10243f;border-color:#2f8cff}
+body.dark #readout{background:#0f141c;color:#fff;border-color:#2f8cff}
+body.dark .pad .enter{background:#12376b;color:#fff}
+body.dark .summary div{background:#11161e;border-color:#333d4e}
+body.dark canvas{background:#0d1117;border-color:#596579}
+body.dark table{color:#e9edf5}
+body.dark th{background:#242b36}
+body.dark td,body.dark th{border-color:#596579}
+body.dark td button{background:#11161e;color:#e9edf5;border-color:#596579}
+body.dark .printCard{background:#171b22;color:#e9edf5}
+body.dark .histItem{background:#11161e;border-color:#333d4e}
+@media print{body.dark{background:#fff;color:#000}body.dark .printCard{background:#fff;color:#000}body.dark canvas{background:#fff}}
