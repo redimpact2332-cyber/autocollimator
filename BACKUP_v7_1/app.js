@@ -1,20 +1,20 @@
 const STORAGE="auto_collimator_v7_full";
 const HISTORY="auto_collimator_v7_history";
-const state={N:40,mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:40,tolerance:0,graphInvertY:false,graphInvertX:false,vals:Array.from({length:40},()=>[null,null,null,null]),meta:{}};
+const state={N:40,mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:40,tolerance:0,vals:Array.from({length:40},()=>[null,null,null,null]),meta:{}};
 let result=null, undoStack=[], redoStack=[];
 const $=id=>document.getElementById(id);
 const THEME_KEY="auto_collimator_theme";
 function applyTheme(theme){
  document.body.classList.toggle("dark", theme==="dark");
  localStorage.setItem(THEME_KEY, theme);
- if(result) drawGraph($("graph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});
- const pg=$("printGraph"); if(pg && result) drawGraph(pg,result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});
+ if(result) drawGraph($("graph"),result.data,result.dev,state.N);
+ const pg=$("printGraph"); if(pg && result) drawGraph(pg,result.data,result.dev,state.N);
 }
 function loadTheme(){applyTheme(localStorage.getItem(THEME_KEY)||"light")}
 
 function cloneVals(){return state.vals.map(r=>r.slice())}
-function pushUndo(){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX}); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
-function restore(s){state.vals=s.vals.map(r=>r.slice());state.N=s.N;state.rangeStart=s.rangeStart;state.rangeEnd=s.rangeEnd;state.tolerance=s.tolerance||0;state.graphInvertY=!!s.graphInvertY;state.graphInvertX=!!s.graphInvertX;normalize();buildTable();update(false)}
+function pushUndo(){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance}); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
+function restore(s){state.vals=s.vals.map(r=>r.slice());state.N=s.N;state.rangeStart=s.rangeStart;state.rangeEnd=s.rangeEnd;state.tolerance=s.tolerance||0;normalize();buildTable();update(false)}
 function normalize(){
  state.N=Math.max(0,Math.min(100,Math.round(state.N)));
  while(state.vals.length<state.N)state.vals.push([null,null,null,null]);
@@ -22,7 +22,6 @@ function normalize(){
  if(state.N===0){state.row=0;state.rangeStart=0;state.rangeEnd=0}
  else{state.row=Math.min(Math.max(1,state.row),state.N);state.rangeStart=Math.min(Math.max(1,state.rangeStart),state.N);state.rangeEnd=Math.min(Math.max(state.rangeStart,state.rangeEnd),state.N)}
  state.tolerance=Math.max(0,Number(state.tolerance)||0);
- state.graphInvertY=!!state.graphInvertY;state.graphInvertX=!!state.graphInvertX;
 }
 function metaIds(){return ["serial","model","name","date","outsideTemp","machineTemp","operator","note"]}
 function save(){metaIds().forEach(id=>state.meta[id]=$(id).value);state.tolerance=Number($("toleranceInput").value)||0;localStorage.setItem(STORAGE,JSON.stringify(state))}
@@ -48,30 +47,27 @@ function render(){
  const done=state.vals.filter(v=>v[state.mode-1]!==null).length;$("doneText").textContent=done;$("totalText").textContent=state.N;$("progressBar").style.width=(state.N?done/state.N*100:0)+"%";
  $("minusLock").classList.toggle("minusOn",state.minusLock);$("minusLock").textContent=state.minusLock?"−固定中":"−固定";
  $("pointCountInput").value=state.N;$("rangeStartInput").value=state.rangeStart;$("rangeEndInput").value=state.rangeEnd;$("rangeLabel").textContent=state.rangeStart+"-"+state.rangeEnd;$("toleranceInput").value=state.tolerance||0;
- const yb=$("graphInvertYBtn"), xb=$("graphInvertXBtn");
- if(yb){yb.classList.toggle("active",state.graphInvertY);yb.textContent=state.graphInvertY?"＋−上下反転中":"＋−上下反転"}
- if(xb){xb.classList.toggle("active",state.graphInvertX);xb.textContent=state.graphInvertX?"左右反転中":"左右反転"}
 }
 function update(doSave=true){
  normalize(); result=calcSeries(state);
  $("avgText").textContent=fmt(result.avg);$("lastText").textContent=fmt(result.last);$("devText").textContent=fmt(result.dev.maxDev);
  const ok=state.tolerance>0 ? result.dev.maxDev<=state.tolerance : null;
  $("judgeText").textContent=ok===null?"---":(ok?"PASS":"NG");$("judgeText").className=ok===null?"":(ok?"pass":"ng");
- $("devDetailText").textContent=`測定${state.mode}：左 ${fmt(result.dev.left.maxDev)} / 中央 ${fmt(result.dev.center.maxDev)} / 右 ${fmt(result.dev.right.maxDev)}`;
+ $("devDetailText").textContent=`左 ${fmt(result.dev.left.maxDev)} / 中央 ${fmt(result.dev.center.maxDev)} / 右 ${fmt(result.dev.right.maxDev)}`;
  for(const r of result.rows){for(let c=1;c<=4;c++)$("v"+c+"_"+r.pos).textContent=fmt(r.vals[c-1]);$("m_"+r.pos).textContent=fmt(r.m);$("co_"+r.pos).textContent=fmt(r.co);$("cu_"+r.pos).textContent=fmt(r.cu)}
- drawGraph($("graph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});render();if(doSave)save();
+ drawGraph($("graph"),result.data,result.dev,state.N);render();if(doSave)save();
 }
 function showShot(){
  $("inputView").classList.add("hidden");$("shotView").classList.remove("hidden");
  $("pSerial").textContent=state.meta.serial||"";$("pModel").textContent=state.meta.model||"";$("pName").textContent=state.meta.name||"";$("pDate").textContent=state.meta.date||"";
  $("pOutside").textContent=state.meta.outsideTemp||"";$("pMachine").textContent=state.meta.machineTemp||"";$("pOperator").textContent=state.meta.operator||"";$("pNote").textContent=state.meta.note||"";
- $("pSummary").textContent=`測定${state.mode}　平均範囲：${state.rangeStart}-${state.rangeEnd}　平均：${fmt(result.avg)}　全体最大差：${fmt(result.dev.maxDev)}　判定：${$("judgeText").textContent}`;
+ $("pSummary").textContent=`平均範囲：${state.rangeStart}-${state.rangeEnd}　平均：${fmt(result.avg)}　全体最大差：${fmt(result.dev.maxDev)}　判定：${$("judgeText").textContent}`;
  $("pDevDetail").textContent=$("devDetailText").textContent;
- drawGraph($("printGraph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});$("printTable").innerHTML=`<table>${$("dataTable").innerHTML}</table>`;scrollTo({top:0});
+ drawGraph($("printGraph"),result.data,result.dev,state.N);$("printTable").innerHTML=`<table>${$("dataTable").innerHTML}</table>`;scrollTo({top:0});
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollTo({top:0})}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
-function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),fmt(r.m),fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
+function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4","平均","補正","累計"]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),fmt(r.m),fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
 function jsonOut(){save();download("autocollimator_data.json",JSON.stringify(state,null,2),"application/json")}
 function history(){try{return JSON.parse(localStorage.getItem(HISTORY)||"[]")}catch(e){return[]}}
 function saveHistory(){save();const h=history();h.unshift({time:new Date().toLocaleString(),title:`${state.meta.serial||""} ${state.meta.name||""}`.trim()||"測定データ",data:JSON.parse(JSON.stringify(state))});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,50)));renderHistory();alert("履歴保存しました")}
@@ -90,8 +86,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
  $("prevRow").onclick=()=>{if(state.row>1)state.row--;state.buf=currentValue();render()};$("skipRow").onclick=()=>{moveNext();state.buf=currentValue();render()};$("commit").onclick=commit;
  $("clearBtn").onclick=()=>{if(confirm("全部消去しますか？")){pushUndo();state.vals=Array.from({length:state.N},()=>[null,null,null,null]);state.row=1;state.mode=1;state.buf="";update()}};
- $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX});restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX});restore(s)}};
- $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
+ $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance});restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance});restore(s)}};
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
  $("inputBtn").onclick=showInput;$("shotBtn").onclick=showShot;$("printBtn").onclick=()=>{showShot();setTimeout(()=>print(),100)};$("backInput1").onclick=showInput;$("doPrint").onclick=()=>print();

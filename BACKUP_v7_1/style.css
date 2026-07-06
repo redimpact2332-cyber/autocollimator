@@ -43,6 +43,3 @@ body.dark td button{background:#11161e;color:#e9edf5;border-color:#596579}
 body.dark .printCard{background:#171b22;color:#e9edf5}
 body.dark .histItem{background:#11161e;border-color:#333d4e}
 @media print{body.dark{background:#fff;color:#000}body.dark .printCard{background:#fff;color:#000}body.dark canvas{background:#fff}}
-
-/* v7.2 graph controls */
-.graphBtns{margin-bottom:6px}.graphBtns button.active{background:#dcecff;border-color:#007aff;color:#005fcf;font-weight:800}body.dark .graphBtns button.active{background:#12376b;border-color:#2f8cff;color:#fff}
