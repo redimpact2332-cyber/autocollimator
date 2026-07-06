@@ -49,3 +49,6 @@ body.dark .histItem{background:#11161e;border-color:#333d4e}
 
 /* v7.8 independent table */
 td button.disabledCell, body.dark td button.disabledCell{opacity:.25;background:transparent;color:transparent;border-color:#444;pointer-events:none}
+
+button.dangerSub{border-color:#b55;color:#ffd0d0;background:#321719}
+button.dangerSub:active{background:#4a2024}

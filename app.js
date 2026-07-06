@@ -124,6 +124,24 @@ function currentValue(){if(state.N===0||state.row<1)return"";const row=state.val
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
 function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)state.row++; else if(state.mode<4){saveActiveSettings();state.mode++;normalize();state.row=1}else state.row=state.N}
 function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();while(state.vals.length<state.row)state.vals.push([null,null,null,null]);state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
+function ensureValueRows(){const need=Math.max(100,state.vals.length,tableRowCount(),maxCount());while(state.vals.length<need)state.vals.push([null,null,null,null])}
+function clearAllMeasurements(){
+ if(!confirm("全測定を消去しますか？"))return;
+ pushUndo();
+ ensureValueRows();
+ for(const row of state.vals){for(let c=0;c<4;c++)row[c]=null}
+ state.row=state.N?1:0;state.buf="";
+ buildTable();update();
+}
+function clearOneMeasurement(mode){
+ const m=Math.min(4,Math.max(1,Number(mode)||state.mode));
+ if(!confirm(`測定${m}だけ消去しますか？`))return;
+ pushUndo();
+ ensureValueRows();
+ for(const row of state.vals)row[m-1]=null;
+ if(state.mode===m){state.row=state.N?1:0;state.buf=currentValue()}
+ buildTable();update();
+}
 function setCount(n){pushUndo();state.N=n;saveActiveSettings();normalize();buildTable();update()}
 function setRangeFromInputs(){pushUndo();let s=Number($("rangeStartInput").value),e=Number($("rangeEndInput").value);if(!Number.isFinite(s))s=1;if(!Number.isFinite(e))e=state.N;s=Math.round(s);e=Math.round(e);if(state.N===0){state.rangeStart=0;state.rangeEnd=0}else{s=Math.max(1,Math.min(state.N,s));e=Math.max(1,Math.min(state.N,e));if(e<s){const t=s;s=e;e=t}state.rangeStart=s;state.rangeEnd=e}saveActiveSettings();update()}
 function setCountFromInput(){let n=Number($("pointCountInput").value);if(!Number.isFinite(n))n=state.N;setCount(n)}
@@ -191,7 +209,8 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("rangeEndMinus").onclick=()=>{state.rangeEnd=Math.max(1,state.rangeEnd-1);if(state.rangeEnd<state.rangeStart)state.rangeStart=state.rangeEnd;saveActiveSettings();update()};$("rangeEndPlus").onclick=()=>{state.rangeEnd=Math.min(state.N,state.rangeEnd+1);saveActiveSettings();update()};$("rangeAll").onclick=()=>{state.rangeStart=state.N?1:0;state.rangeEnd=state.N;saveActiveSettings();update()};
  $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
  $("prevRow").onclick=()=>{if(state.row>1)state.row--;state.buf=currentValue();render()};$("skipRow").onclick=()=>{moveNext();state.buf=currentValue();render()};$("commit").onclick=commit;
- $("clearBtn").onclick=()=>{if(confirm("全部消去しますか？")){pushUndo();state.vals=Array.from({length:maxCount()},()=>[null,null,null,null]);state.row=state.N?1:0;state.buf="";update()}};
+ $("clearBtn").onclick=clearAllMeasurements;
+ $("clearMode1").onclick=()=>clearOneMeasurement(1);$("clearMode2").onclick=()=>clearOneMeasurement(2);$("clearMode3").onclick=()=>clearOneMeasurement(3);$("clearMode4").onclick=()=>clearOneMeasurement(4);
  $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push(snapshot());restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push(snapshot());restore(s)}};
  $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
