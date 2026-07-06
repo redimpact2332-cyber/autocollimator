@@ -116,7 +116,6 @@ function buildTable(){
   state.row=Math.min(r,state.N||r);
   state.buf=currentValue();
   update(false);
-  $("tableWrap").classList.add("hidden");
   render();
   scrollToEditPositionStable();
  });
