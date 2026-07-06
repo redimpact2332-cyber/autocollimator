@@ -39,8 +39,7 @@ function drawGraph(canvas,data,dev,N){
  const graphN=Math.max(1,N);
  const xs=p=>{
    const t=graphN<=0?0:p/graphN;
-   return invX ? (w-R-t*(w-L-R)) : (L+t*(w-L-R));
- };
+   return L+t*(w-L-R);
  const yy=y=>T+(max-y)/(max-min)*(h-T-B);
  const gy=y=>-y;
 
