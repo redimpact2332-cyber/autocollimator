@@ -126,21 +126,32 @@ function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)sta
 function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();while(state.vals.length<state.row)state.vals.push([null,null,null,null]);state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
 function ensureValueRows(){const need=Math.max(100,state.vals.length,tableRowCount(),maxCount());while(state.vals.length<need)state.vals.push([null,null,null,null])}
 function clearAllMeasurements(){
- if(!confirm("全測定を消去しますか？"))return;
  pushUndo();
  ensureValueRows();
- for(const row of state.vals){for(let c=0;c<4;c++)row[c]=null}
- state.row=state.N?1:0;state.buf="";
- buildTable();update();
+ const need=Math.max(state.vals.length,100,tableRowCount(),maxCount());
+ while(state.vals.length<need)state.vals.push([null,null,null,null]);
+ for(let i=0;i<state.vals.length;i++){
+  if(!Array.isArray(state.vals[i]))state.vals[i]=[null,null,null,null];
+  for(let c=0;c<4;c++)state.vals[i][c]=null;
+ }
+ state.row=state.N?1:0;
+ state.buf="";
+ buildTable();
+ update(true);
 }
 function clearOneMeasurement(mode){
  const m=Math.min(4,Math.max(1,Number(mode)||state.mode));
- if(!confirm(`測定${m}だけ消去しますか？`))return;
  pushUndo();
  ensureValueRows();
- for(const row of state.vals)row[m-1]=null;
+ const need=Math.max(state.vals.length,100,tableRowCount(),maxCount());
+ while(state.vals.length<need)state.vals.push([null,null,null,null]);
+ for(let i=0;i<state.vals.length;i++){
+  if(!Array.isArray(state.vals[i]))state.vals[i]=[null,null,null,null];
+  state.vals[i][m-1]=null;
+ }
  if(state.mode===m){state.row=state.N?1:0;state.buf=currentValue()}
- buildTable();update();
+ buildTable();
+ update(true);
 }
 function setCount(n){pushUndo();state.N=n;saveActiveSettings();normalize();buildTable();update()}
 function setRangeFromInputs(){pushUndo();let s=Number($("rangeStartInput").value),e=Number($("rangeEndInput").value);if(!Number.isFinite(s))s=1;if(!Number.isFinite(e))e=state.N;s=Math.round(s);e=Math.round(e);if(state.N===0){state.rangeStart=0;state.rangeEnd=0}else{s=Math.max(1,Math.min(state.N,s));e=Math.max(1,Math.min(state.N,e));if(e<s){const t=s;s=e;e=t}state.rangeStart=s;state.rangeEnd=e}saveActiveSettings();update()}
@@ -209,8 +220,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("rangeEndMinus").onclick=()=>{state.rangeEnd=Math.max(1,state.rangeEnd-1);if(state.rangeEnd<state.rangeStart)state.rangeStart=state.rangeEnd;saveActiveSettings();update()};$("rangeEndPlus").onclick=()=>{state.rangeEnd=Math.min(state.N,state.rangeEnd+1);saveActiveSettings();update()};$("rangeAll").onclick=()=>{state.rangeStart=state.N?1:0;state.rangeEnd=state.N;saveActiveSettings();update()};
  $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
  $("prevRow").onclick=()=>{if(state.row>1)state.row--;state.buf=currentValue();render()};$("skipRow").onclick=()=>{moveNext();state.buf=currentValue();render()};$("commit").onclick=commit;
- $("clearBtn").onclick=clearAllMeasurements;
- $("clearMode1").onclick=()=>clearOneMeasurement(1);$("clearMode2").onclick=()=>clearOneMeasurement(2);$("clearMode3").onclick=()=>clearOneMeasurement(3);$("clearMode4").onclick=()=>clearOneMeasurement(4);
+ const clearAllBtn=$("clearBtn"); if(clearAllBtn) clearAllBtn.onclick=clearAllMeasurements;
+ for(let cm=1;cm<=4;cm++){
+  const btn=$("clearMode"+cm);
+  if(btn) btn.onclick=()=>clearOneMeasurement(cm);
+ }
  $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push(snapshot());restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push(snapshot());restore(s)}};
  $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
