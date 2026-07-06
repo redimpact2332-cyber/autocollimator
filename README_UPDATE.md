@@ -1,6 +1,4 @@
-# v7.6 SAFE update
-
-- セルをタップした後、自動的に測定位置数・平均範囲のカード位置へスクロールします。
-- 測定位置数を測定1/2/3/4ごとに独立化しました。
-- 平均範囲も測定1/2/3/4ごとに保持します。
-- 既存データとの互換性を維持します。
+v7.7 independent count stable scroll
+- mode settings are saved independently in a separate localStorage key
+- cell tap scroll uses stable delayed scroll to the control card
+- cache updated

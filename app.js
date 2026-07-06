@@ -5,12 +5,34 @@ const state={N:DEFAULT_N,counts:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],mode:1
 let result=null, undoStack=[], redoStack=[];
 const $=id=>document.getElementById(id);
 const THEME_KEY="auto_collimator_theme";
+const MODE_SETTINGS_KEY="auto_collimator_v7_mode_settings";
 function activeMode(){return Math.min(4,Math.max(1,Number(state.mode)||1))}
 function mi(){return activeMode()-1}
 function activeN(){return Number(state.counts&&state.counts[mi()])||0}
 function maxCount(){return Math.max(0,...(state.counts||[state.N||DEFAULT_N]).map(n=>Number(n)||0))}
-function syncActiveSettings(){const i=mi();state.N=activeN();state.rangeStart=state.rangeStarts[i];state.rangeEnd=state.rangeEnds[i]}
-function saveActiveSettings(){const i=mi();state.counts[i]=state.N;state.rangeStarts[i]=state.rangeStart;state.rangeEnds[i]=state.rangeEnd}
+function syncActiveSettings(){
+ const i=mi();
+ state.N=Math.max(0,Math.min(100,Math.round(Number(state.counts[i])||0)));
+ state.rangeStart=Math.round(Number(state.rangeStarts[i])||0);
+ state.rangeEnd=Math.round(Number(state.rangeEnds[i])||state.N);
+}
+function saveActiveSettings(){
+ const i=mi();
+ state.counts[i]=Math.max(0,Math.min(100,Math.round(Number(state.N)||0)));
+ state.rangeStarts[i]=Math.round(Number(state.rangeStart)||0);
+ state.rangeEnds[i]=Math.round(Number(state.rangeEnd)||0);
+ localStorage.setItem(MODE_SETTINGS_KEY,JSON.stringify({counts:state.counts,rangeStarts:state.rangeStarts,rangeEnds:state.rangeEnds}));
+}
+function loadModeSettings(){
+ try{
+  const m=JSON.parse(localStorage.getItem(MODE_SETTINGS_KEY)||"null");
+  if(m&&Array.isArray(m.counts)&&m.counts.length>=4){
+   state.counts=m.counts.slice(0,4);
+   state.rangeStarts=(m.rangeStarts||state.rangeStarts).slice(0,4);
+   state.rangeEnds=(m.rangeEnds||state.rangeEnds).slice(0,4);
+  }
+ }catch(e){}
+}
 function applyTheme(theme){
  document.body.classList.toggle("dark", theme==="dark");
  localStorage.setItem(THEME_KEY, theme);
@@ -57,8 +79,20 @@ function normalize(){
 }
 function metaIds(){return ["serial","model","name","date","outsideTemp","machineTemp","operator","note"]}
 function save(){saveActiveSettings();metaIds().forEach(id=>state.meta[id]=$(id).value);state.tolerance=Number($("toleranceInput").value)||0;localStorage.setItem(STORAGE,JSON.stringify(state))}
-function load(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||"{}");Object.assign(state,s);if(!state.vals)state.vals=Array.from({length:state.N||DEFAULT_N},()=>[null,null,null,null]);}catch(e){}normalize()}
-function scrollToEditPosition(){const target=$("controlCard")||document.querySelector(".card.current")||$("inputView");target.scrollIntoView({behavior:"smooth",block:"start"})}
+function load(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||"{}");Object.assign(state,s);if(!state.vals)state.vals=Array.from({length:state.N||DEFAULT_N},()=>[null,null,null,null]);}catch(e){}loadModeSettings();normalize()}
+function scrollToEditPosition(){
+ const target=$("controlCard")||$("inputView");
+ if(!target)return;
+ const header=document.querySelector("header");
+ const offset=(header?header.offsetHeight:0)+10;
+ const top=target.getBoundingClientRect().top+window.pageYOffset-offset;
+ window.scrollTo({top:Math.max(0,top),behavior:"smooth"});
+}
+function scrollToEditPositionStable(){
+ requestAnimationFrame(()=>requestAnimationFrame(()=>scrollToEditPosition()));
+ setTimeout(scrollToEditPosition,180);
+ setTimeout(scrollToEditPosition,420);
+}
 function buildTable(){
  const tb=$("tbody");tb.innerHTML="";
  for(let i=1;i<=state.N;i++){
@@ -66,7 +100,7 @@ function buildTable(){
   tr.innerHTML=`<td>${i}</td>${[1,2,3,4].map(c=>`<td><button data-edit="${i},${c}" id="v${c}_${i}"></button></td>`).join("")}<td id="m_${i}"></td><td id="co_${i}"></td><td id="cu_${i}"></td>`;
   tb.appendChild(tr);
  }
- tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.mode=c;normalize();state.row=Math.min(r,state.N||r);state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();setTimeout(scrollToEditPosition,50)});
+ tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.mode=c;normalize();state.row=Math.min(r,state.N||r);state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();scrollToEditPositionStable()});
 }
 function currentValue(){if(state.N===0||state.row<1)return"";const row=state.vals[state.row-1]||[];const v=row[state.mode-1];return v===null||v===undefined?"":String(Math.abs(v))}
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
@@ -101,7 +135,7 @@ function showShot(){
  $("pDevDetail").textContent=$("devDetailText").textContent;
  drawGraph($("printGraph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});$("printTable").innerHTML=`<table>${$("dataTable").innerHTML}</table>`;scrollTo({top:0});
 }
-function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPosition()}
+function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPositionStable()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
 function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),r.pos===1?fmt(result.avg):"",fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
 function jsonOut(){save();download("autocollimator_data.json",JSON.stringify(state,null,2),"application/json")}
@@ -112,7 +146,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
  buildTable();update(false);renderHistory();
- document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{saveActiveSettings();state.mode=Number(b.dataset.mode);normalize();state.row=state.N?1:0;state.buf=currentValue();buildTable();update(false);render()});
+ document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{saveActiveSettings();state.mode=Number(b.dataset.mode);normalize();state.row=state.N?1:0;state.buf=currentValue();buildTable();update(false);render();scrollToEditPositionStable()});
  document.querySelectorAll("[data-count]").forEach(b=>b.onclick=()=>setCount(Number(b.dataset.count)));
  document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{if(state.buf==="0")state.buf=b.dataset.key;else state.buf+=b.dataset.key;render()});
  $("countMinus").onclick=()=>setCount(state.N-1);$("countPlus").onclick=()=>setCount(state.N+1);$("pointCountInput").onchange=setCountFromInput;$("pointCountInput").onblur=setCountFromInput;
