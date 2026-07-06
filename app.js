@@ -1,9 +1,16 @@
 const STORAGE="auto_collimator_v7_full";
 const HISTORY="auto_collimator_v7_history";
-const state={N:40,mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:40,tolerance:0,graphInvertY:false,graphInvertX:false,vals:Array.from({length:40},()=>[null,null,null,null]),meta:{}};
+const DEFAULT_N=40;
+const state={N:DEFAULT_N,counts:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:DEFAULT_N,rangeStarts:[1,1,1,1],rangeEnds:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],tolerance:0,graphInvertY:false,graphInvertX:false,vals:Array.from({length:DEFAULT_N},()=>[null,null,null,null]),meta:{}};
 let result=null, undoStack=[], redoStack=[];
 const $=id=>document.getElementById(id);
 const THEME_KEY="auto_collimator_theme";
+function activeMode(){return Math.min(4,Math.max(1,Number(state.mode)||1))}
+function mi(){return activeMode()-1}
+function activeN(){return Number(state.counts&&state.counts[mi()])||0}
+function maxCount(){return Math.max(0,...(state.counts||[state.N||DEFAULT_N]).map(n=>Number(n)||0))}
+function syncActiveSettings(){const i=mi();state.N=activeN();state.rangeStart=state.rangeStarts[i];state.rangeEnd=state.rangeEnds[i]}
+function saveActiveSettings(){const i=mi();state.counts[i]=state.N;state.rangeStarts[i]=state.rangeStart;state.rangeEnds[i]=state.rangeEnd}
 function applyTheme(theme){
  document.body.classList.toggle("dark", theme==="dark");
  localStorage.setItem(THEME_KEY, theme);
@@ -11,22 +18,47 @@ function applyTheme(theme){
  const pg=$("printGraph"); if(pg && result) drawGraph(pg,result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});
 }
 function loadTheme(){applyTheme(localStorage.getItem(THEME_KEY)||"light")}
-
 function cloneVals(){return state.vals.map(r=>r.slice())}
-function pushUndo(){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX}); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
-function restore(s){state.vals=s.vals.map(r=>r.slice());state.N=s.N;state.rangeStart=s.rangeStart;state.rangeEnd=s.rangeEnd;state.tolerance=s.tolerance||0;state.graphInvertY=!!s.graphInvertY;state.graphInvertX=!!s.graphInvertX;normalize();buildTable();update(false)}
+function cloneArr(a){return Array.isArray(a)?a.slice():[]}
+function snapshot(){return {vals:cloneVals(),N:state.N,counts:cloneArr(state.counts),rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,rangeStarts:cloneArr(state.rangeStarts),rangeEnds:cloneArr(state.rangeEnds),tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX,mode:state.mode,row:state.row}}
+function pushUndo(){saveActiveSettings();undoStack.push(snapshot()); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
+function restore(s){
+ state.vals=s.vals.map(r=>r.slice());state.mode=s.mode||state.mode;state.row=s.row||state.row;
+ state.counts=s.counts||[s.N||DEFAULT_N,s.N||DEFAULT_N,s.N||DEFAULT_N,s.N||DEFAULT_N];
+ state.rangeStarts=s.rangeStarts||[s.rangeStart||1,s.rangeStart||1,s.rangeStart||1,s.rangeStart||1];
+ state.rangeEnds=s.rangeEnds||[s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N];
+ state.tolerance=s.tolerance||0;state.graphInvertY=!!s.graphInvertY;state.graphInvertX=!!s.graphInvertX;
+ normalize();buildTable();update(false)
+}
 function normalize(){
- state.N=Math.max(0,Math.min(100,Math.round(state.N)));
- while(state.vals.length<state.N)state.vals.push([null,null,null,null]);
- state.vals=state.vals.slice(0,state.N);
- if(state.N===0){state.row=0;state.rangeStart=0;state.rangeEnd=0}
- else{state.row=Math.min(Math.max(1,state.row),state.N);state.rangeStart=Math.min(Math.max(1,state.rangeStart),state.N);state.rangeEnd=Math.min(Math.max(state.rangeStart,state.rangeEnd),state.N)}
+ state.mode=activeMode();
+ const oldN=Number(state.N)||DEFAULT_N;
+ if(!Array.isArray(state.counts)||state.counts.length<4)state.counts=[oldN,oldN,oldN,oldN];
+ state.counts=state.counts.slice(0,4).map(n=>Math.max(0,Math.min(100,Math.round(Number(n)||0))));
+ if(!Array.isArray(state.rangeStarts)||state.rangeStarts.length<4)state.rangeStarts=[state.rangeStart||1,state.rangeStart||1,state.rangeStart||1,state.rangeStart||1];
+ if(!Array.isArray(state.rangeEnds)||state.rangeEnds.length<4)state.rangeEnds=[state.rangeEnd||oldN,state.rangeEnd||oldN,state.rangeEnd||oldN,state.rangeEnd||oldN];
+ state.rangeStarts=state.rangeStarts.slice(0,4).map(n=>Math.round(Number(n)||1));
+ state.rangeEnds=state.rangeEnds.slice(0,4).map(n=>Math.round(Number(n)||1));
+ for(let i=0;i<4;i++){
+  const n=state.counts[i];
+  if(n===0){state.rangeStarts[i]=0;state.rangeEnds[i]=0;continue}
+  let s=Math.max(1,Math.min(n,state.rangeStarts[i]||1));
+  let e=Math.max(1,Math.min(n,state.rangeEnds[i]||n));
+  if(e<s){const t=s;s=e;e=t}
+  state.rangeStarts[i]=s;state.rangeEnds[i]=e;
+ }
+ syncActiveSettings();
+ const need=maxCount();
+ while(state.vals.length<need)state.vals.push([null,null,null,null]);
+ state.vals=state.vals.slice(0,Math.max(need,state.vals.length));
+ if(state.N===0)state.row=0;else state.row=Math.min(Math.max(1,state.row),state.N);
  state.tolerance=Math.max(0,Number(state.tolerance)||0);
  state.graphInvertY=!!state.graphInvertY;state.graphInvertX=!!state.graphInvertX;
 }
 function metaIds(){return ["serial","model","name","date","outsideTemp","machineTemp","operator","note"]}
-function save(){metaIds().forEach(id=>state.meta[id]=$(id).value);state.tolerance=Number($("toleranceInput").value)||0;localStorage.setItem(STORAGE,JSON.stringify(state))}
-function load(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||"{}");Object.assign(state,s);if(!state.vals)state.vals=Array.from({length:state.N||40},()=>[null,null,null,null]);}catch(e){}normalize()}
+function save(){saveActiveSettings();metaIds().forEach(id=>state.meta[id]=$(id).value);state.tolerance=Number($("toleranceInput").value)||0;localStorage.setItem(STORAGE,JSON.stringify(state))}
+function load(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||"{}");Object.assign(state,s);if(!state.vals)state.vals=Array.from({length:state.N||DEFAULT_N},()=>[null,null,null,null]);}catch(e){}normalize()}
+function scrollToEditPosition(){const target=$("controlCard")||document.querySelector(".card.current")||$("inputView");target.scrollIntoView({behavior:"smooth",block:"start"})}
 function buildTable(){
  const tb=$("tbody");tb.innerHTML="";
  for(let i=1;i<=state.N;i++){
@@ -34,18 +66,18 @@ function buildTable(){
   tr.innerHTML=`<td>${i}</td>${[1,2,3,4].map(c=>`<td><button data-edit="${i},${c}" id="v${c}_${i}"></button></td>`).join("")}<td id="m_${i}"></td><td id="co_${i}"></td><td id="cu_${i}"></td>`;
   tb.appendChild(tr);
  }
- tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.row=r;state.mode=c;state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();scrollTo({top:0,behavior:"smooth"})});
+ tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.mode=c;normalize();state.row=Math.min(r,state.N||r);state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();setTimeout(scrollToEditPosition,50)});
 }
-function currentValue(){if(state.N===0||state.row<1)return"";const v=state.vals[state.row-1][state.mode-1];return v===null?"":String(Math.abs(v))}
+function currentValue(){if(state.N===0||state.row<1)return"";const row=state.vals[state.row-1]||[];const v=row[state.mode-1];return v===null||v===undefined?"":String(Math.abs(v))}
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
-function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)state.row++; else if(state.mode<4){state.mode++;state.row=1}else state.row=state.N}
-function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
-function setCount(n){pushUndo();state.N=n;normalize();buildTable();update()}
-function setRangeFromInputs(){pushUndo();let s=Number($("rangeStartInput").value),e=Number($("rangeEndInput").value);if(!Number.isFinite(s))s=1;if(!Number.isFinite(e))e=state.N;s=Math.round(s);e=Math.round(e);if(state.N===0){state.rangeStart=0;state.rangeEnd=0}else{s=Math.max(1,Math.min(state.N,s));e=Math.max(1,Math.min(state.N,e));if(e<s){const t=s;s=e;e=t}state.rangeStart=s;state.rangeEnd=e}update()}
+function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)state.row++; else if(state.mode<4){saveActiveSettings();state.mode++;normalize();state.row=1}else state.row=state.N}
+function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();while(state.vals.length<state.row)state.vals.push([null,null,null,null]);state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
+function setCount(n){pushUndo();state.N=n;saveActiveSettings();normalize();buildTable();update()}
+function setRangeFromInputs(){pushUndo();let s=Number($("rangeStartInput").value),e=Number($("rangeEndInput").value);if(!Number.isFinite(s))s=1;if(!Number.isFinite(e))e=state.N;s=Math.round(s);e=Math.round(e);if(state.N===0){state.rangeStart=0;state.rangeEnd=0}else{s=Math.max(1,Math.min(state.N,s));e=Math.max(1,Math.min(state.N,e));if(e<s){const t=s;s=e;e=t}state.rangeStart=s;state.rangeEnd=e}saveActiveSettings();update()}
 function setCountFromInput(){let n=Number($("pointCountInput").value);if(!Number.isFinite(n))n=state.N;setCount(n)}
 function render(){
  $("modeText").textContent=state.mode;$("rowText").textContent=state.N?state.row:"-";$("readout").textContent=state.buf===""?"0":fmt(inputNumber());
- const done=state.vals.filter(v=>v[state.mode-1]!==null).length;$("doneText").textContent=done;$("totalText").textContent=state.N;$("progressBar").style.width=(state.N?done/state.N*100:0)+"%";
+ const done=state.vals.slice(0,state.N).filter(v=>v[state.mode-1]!==null&&v[state.mode-1]!==undefined).length;$("doneText").textContent=done;$("totalText").textContent=state.N;$("progressBar").style.width=(state.N?done/state.N*100:0)+"%";
  $("minusLock").classList.toggle("minusOn",state.minusLock);$("minusLock").textContent=state.minusLock?"−固定中":"−固定";
  $("pointCountInput").value=state.N;$("rangeStartInput").value=state.rangeStart;$("rangeEndInput").value=state.rangeEnd;$("rangeLabel").textContent=state.rangeStart+"-"+state.rangeEnd;$("toleranceInput").value=state.tolerance||0;
  const yb=$("graphInvertYBtn"), xb=$("graphInvertXBtn");
@@ -65,11 +97,11 @@ function showShot(){
  $("inputView").classList.add("hidden");$("shotView").classList.remove("hidden");
  $("pSerial").textContent=state.meta.serial||"";$("pModel").textContent=state.meta.model||"";$("pName").textContent=state.meta.name||"";$("pDate").textContent=state.meta.date||"";
  $("pOutside").textContent=state.meta.outsideTemp||"";$("pMachine").textContent=state.meta.machineTemp||"";$("pOperator").textContent=state.meta.operator||"";$("pNote").textContent=state.meta.note||"";
- $("pSummary").textContent=`測定${state.mode}　平均範囲：${state.rangeStart}-${state.rangeEnd}　平均：${fmt(result.avg)}　全体最大差：${fmt(result.dev.maxDev)}　判定：${$("judgeText").textContent}`;
+ $("pSummary").textContent=`測定${state.mode}　測定位置数：${state.N}　平均範囲：${state.rangeStart}-${state.rangeEnd}　平均：${fmt(result.avg)}　全体最大差：${fmt(result.dev.maxDev)}　判定：${$("judgeText").textContent}`;
  $("pDevDetail").textContent=$("devDetailText").textContent;
  drawGraph($("printGraph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});$("printTable").innerHTML=`<table>${$("dataTable").innerHTML}</table>`;scrollTo({top:0});
 }
-function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollTo({top:0})}
+function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPosition()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
 function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),r.pos===1?fmt(result.avg):"",fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
 function jsonOut(){save();download("autocollimator_data.json",JSON.stringify(state,null,2),"application/json")}
@@ -80,17 +112,17 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
  buildTable();update(false);renderHistory();
- document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{state.mode=Number(b.dataset.mode);state.row=1;state.buf=currentValue();update(false);render()});
+ document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{saveActiveSettings();state.mode=Number(b.dataset.mode);normalize();state.row=state.N?1:0;state.buf=currentValue();buildTable();update(false);render()});
  document.querySelectorAll("[data-count]").forEach(b=>b.onclick=()=>setCount(Number(b.dataset.count)));
  document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{if(state.buf==="0")state.buf=b.dataset.key;else state.buf+=b.dataset.key;render()});
  $("countMinus").onclick=()=>setCount(state.N-1);$("countPlus").onclick=()=>setCount(state.N+1);$("pointCountInput").onchange=setCountFromInput;$("pointCountInput").onblur=setCountFromInput;
  $("rangeStartInput").onchange=setRangeFromInputs;$("rangeStartInput").onblur=setRangeFromInputs;$("rangeEndInput").onchange=setRangeFromInputs;$("rangeEndInput").onblur=setRangeFromInputs;$("toleranceInput").onchange=()=>{state.tolerance=Number($("toleranceInput").value)||0;update()};
- $("rangeStartMinus").onclick=()=>{state.rangeStart=Math.max(1,state.rangeStart-1);update()};$("rangeStartPlus").onclick=()=>{state.rangeStart=Math.min(state.N,state.rangeStart+1);if(state.rangeStart>state.rangeEnd)state.rangeEnd=state.rangeStart;update()};
- $("rangeEndMinus").onclick=()=>{state.rangeEnd=Math.max(1,state.rangeEnd-1);if(state.rangeEnd<state.rangeStart)state.rangeStart=state.rangeEnd;update()};$("rangeEndPlus").onclick=()=>{state.rangeEnd=Math.min(state.N,state.rangeEnd+1);update()};$("rangeAll").onclick=()=>{state.rangeStart=state.N?1:0;state.rangeEnd=state.N;update()};
+ $("rangeStartMinus").onclick=()=>{state.rangeStart=Math.max(1,state.rangeStart-1);saveActiveSettings();update()};$("rangeStartPlus").onclick=()=>{state.rangeStart=Math.min(state.N,state.rangeStart+1);if(state.rangeStart>state.rangeEnd)state.rangeEnd=state.rangeStart;saveActiveSettings();update()};
+ $("rangeEndMinus").onclick=()=>{state.rangeEnd=Math.max(1,state.rangeEnd-1);if(state.rangeEnd<state.rangeStart)state.rangeStart=state.rangeEnd;saveActiveSettings();update()};$("rangeEndPlus").onclick=()=>{state.rangeEnd=Math.min(state.N,state.rangeEnd+1);saveActiveSettings();update()};$("rangeAll").onclick=()=>{state.rangeStart=state.N?1:0;state.rangeEnd=state.N;saveActiveSettings();update()};
  $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
  $("prevRow").onclick=()=>{if(state.row>1)state.row--;state.buf=currentValue();render()};$("skipRow").onclick=()=>{moveNext();state.buf=currentValue();render()};$("commit").onclick=commit;
- $("clearBtn").onclick=()=>{if(confirm("全部消去しますか？")){pushUndo();state.vals=Array.from({length:state.N},()=>[null,null,null,null]);state.row=1;state.mode=1;state.buf="";update()}};
- $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX});restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push({vals:cloneVals(),N:state.N,rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX});restore(s)}};
+ $("clearBtn").onclick=()=>{if(confirm("全部消去しますか？")){pushUndo();state.vals=Array.from({length:maxCount()},()=>[null,null,null,null]);state.row=state.N?1:0;state.buf="";update()}};
+ $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push(snapshot());restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push(snapshot());restore(s)}};
  $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
