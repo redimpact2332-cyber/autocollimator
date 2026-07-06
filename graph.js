@@ -42,7 +42,7 @@ function drawGraph(canvas,data,dev,N){
    return invX ? (w-R-t*(w-L-R)) : (L+t*(w-L-R));
  };
  const yy=y=>T+(max-y)/(max-min)*(h-T-B);
- const gy=y=>invY?-y:y;
+ const gy=y=>-y;
 
  g.font="16px sans-serif";
  g.lineWidth=1;
