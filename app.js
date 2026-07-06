@@ -119,7 +119,7 @@ function renderHistory(){const h=history(),box=$("historyList");box.innerHTML=""
 document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
- buildTable();addGraphControlButtons();update(false);renderHistory();
+buildTable();update(false);renderHistory();
  document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{state.mode=Number(b.dataset.mode);state.row=1;state.buf=currentValue();update()});
  document.querySelectorAll("[data-count]").forEach(b=>b.onclick=()=>setCount(Number(b.dataset.count)));
  document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{if(state.buf==="0")state.buf=b.dataset.key;else state.buf+=b.dataset.key;render()});
