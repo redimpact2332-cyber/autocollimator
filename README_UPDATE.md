@@ -1,4 +1,1 @@
-v7.7 independent count stable scroll
-- mode settings are saved independently in a separate localStorage key
-- cell tap scroll uses stable delayed scroll to the control card
-- cache updated
+v7.8: 測定位置数の独立表示を表側でも修正。セルタップ時スクロールを安定化。

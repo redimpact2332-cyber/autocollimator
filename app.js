@@ -10,6 +10,8 @@ function activeMode(){return Math.min(4,Math.max(1,Number(state.mode)||1))}
 function mi(){return activeMode()-1}
 function activeN(){return Number(state.counts&&state.counts[mi()])||0}
 function maxCount(){return Math.max(0,...(state.counts||[state.N||DEFAULT_N]).map(n=>Number(n)||0))}
+function countForMode(mode){return Math.max(0,Math.min(100,Math.round(Number((state.counts||[])[mode-1])||0)))}
+function tableRowCount(){return Math.max(state.N||0,maxCount())}
 function syncActiveSettings(){
  const i=mi();
  state.N=Math.max(0,Math.min(100,Math.round(Number(state.counts[i])||0)));
@@ -84,23 +86,40 @@ function scrollToEditPosition(){
  const target=$("controlCard")||$("inputView");
  if(!target)return;
  const header=document.querySelector("header");
- const offset=(header?header.offsetHeight:0)+10;
+ const offset=(header?header.offsetHeight:0)+8;
  const top=target.getBoundingClientRect().top+window.pageYOffset-offset;
- window.scrollTo({top:Math.max(0,top),behavior:"smooth"});
+ window.scrollTo({top:Math.max(0,top),behavior:"auto"});
 }
 function scrollToEditPositionStable(){
- requestAnimationFrame(()=>requestAnimationFrame(()=>scrollToEditPosition()));
+ // Mobile browsers can change viewport height while hiding the table, so repeat fixed-position scroll.
+ requestAnimationFrame(()=>scrollToEditPosition());
+ setTimeout(scrollToEditPosition,60);
  setTimeout(scrollToEditPosition,180);
- setTimeout(scrollToEditPosition,420);
+ setTimeout(scrollToEditPosition,360);
 }
 function buildTable(){
  const tb=$("tbody");tb.innerHTML="";
- for(let i=1;i<=state.N;i++){
+ const rows=tableRowCount();
+ for(let i=1;i<=rows;i++){
   const tr=document.createElement("tr");
-  tr.innerHTML=`<td>${i}</td>${[1,2,3,4].map(c=>`<td><button data-edit="${i},${c}" id="v${c}_${i}"></button></td>`).join("")}<td id="m_${i}"></td><td id="co_${i}"></td><td id="cu_${i}"></td>`;
+  tr.innerHTML=`<td>${i}</td>${[1,2,3,4].map(c=>{
+    const enabled=i<=countForMode(c);
+    return `<td><button ${enabled?`data-edit="${i},${c}"`:"disabled"} id="v${c}_${i}" class="${enabled?"":"disabledCell"}"></button></td>`;
+  }).join("")}<td id="m_${i}"></td><td id="co_${i}"></td><td id="cu_${i}"></td>`;
   tb.appendChild(tr);
  }
- tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.mode=c;normalize();state.row=Math.min(r,state.N||r);state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();scrollToEditPositionStable()});
+ tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{
+  const [r,c]=b.dataset.edit.split(",").map(Number);
+  saveActiveSettings();
+  state.mode=c;
+  normalize();
+  state.row=Math.min(r,state.N||r);
+  state.buf=currentValue();
+  update(false);
+  $("tableWrap").classList.add("hidden");
+  render();
+  scrollToEditPositionStable();
+ });
 }
 function currentValue(){if(state.N===0||state.row<1)return"";const row=state.vals[state.row-1]||[];const v=row[state.mode-1];return v===null||v===undefined?"":String(Math.abs(v))}
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
@@ -124,7 +143,25 @@ function update(doSave=true){
  const ok=state.tolerance>0 ? result.dev.maxDev<=state.tolerance : null;
  $("judgeText").textContent=ok===null?"---":(ok?"PASS":"NG");$("judgeText").className=ok===null?"":(ok?"pass":"ng");
  $("devDetailText").textContent=`測定${state.mode}：左 ${fmt(result.dev.left.maxDev)} / 中央 ${fmt(result.dev.center.maxDev)} / 右 ${fmt(result.dev.right.maxDev)}`;
- for(const r of result.rows){for(let c=1;c<=4;c++)$("v"+c+"_"+r.pos).textContent=fmt(r.vals[c-1]);$("m_"+r.pos).textContent=r.pos===1?fmt(result.avg):"";$("co_"+r.pos).textContent=fmt(r.co);$("cu_"+r.pos).textContent=fmt(r.cu)}
+ const resultMap=new Map(result.rows.map(r=>[r.pos,r]));
+ const rows=tableRowCount();
+ for(let i=1;i<=rows;i++){
+  const vals=state.vals[i-1]||[];
+  for(let c=1;c<=4;c++){
+   const el=$("v"+c+"_"+i);
+   if(el){
+    const enabled=i<=countForMode(c);
+    el.disabled=!enabled;
+    el.classList.toggle("disabledCell",!enabled);
+    el.textContent=enabled?fmt(vals[c-1]):"";
+   }
+  }
+  const r=resultMap.get(i);
+  const m=$("m_"+i),co=$("co_"+i),cu=$("cu_"+i);
+  if(m)m.textContent=(i===1&&state.N>0)?fmt(result.avg):"";
+  if(co)co.textContent=r?fmt(r.co):"";
+  if(cu)cu.textContent=r?fmt(r.cu):"";
+ }
  drawGraph($("graph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});render();if(doSave)save();
 }
 function showShot(){
