@@ -126,13 +126,12 @@ function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)sta
 function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();while(state.vals.length<state.row)state.vals.push([null,null,null,null]);state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
 function ensureValueRows(){const need=Math.max(100,state.vals.length,tableRowCount(),maxCount());while(state.vals.length<need)state.vals.push([null,null,null,null])}
 function clearAllMeasurements(){
- pushUndo();
+ saveActiveSettings();
  ensureValueRows();
  const need=Math.max(state.vals.length,100,tableRowCount(),maxCount());
  while(state.vals.length<need)state.vals.push([null,null,null,null]);
  for(let i=0;i<state.vals.length;i++){
-  if(!Array.isArray(state.vals[i]))state.vals[i]=[null,null,null,null];
-  for(let c=0;c<4;c++)state.vals[i][c]=null;
+  state.vals[i]=[null,null,null,null];
  }
  state.row=state.N?1:0;
  state.buf="";
@@ -141,7 +140,7 @@ function clearAllMeasurements(){
 }
 function clearOneMeasurement(mode){
  const m=Math.min(4,Math.max(1,Number(mode)||state.mode));
- pushUndo();
+ saveActiveSettings();
  ensureValueRows();
  const need=Math.max(state.vals.length,100,tableRowCount(),maxCount());
  while(state.vals.length<need)state.vals.push([null,null,null,null]);
@@ -225,10 +224,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   const btn=$("clearMode"+cm);
   if(btn) btn.onclick=()=>clearOneMeasurement(cm);
  }
- $("undoBtn").onclick=()=>{const s=undoStack.pop();if(s){redoStack.push(snapshot());restore(s)}};$("redoBtn").onclick=()=>{const s=redoStack.pop();if(s){undoStack.push(snapshot());restore(s)}};
  $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
  $("inputBtn").onclick=showInput;$("shotBtn").onclick=showShot;$("printBtn").onclick=()=>{showShot();setTimeout(()=>print(),100)};$("backInput1").onclick=showInput;$("doPrint").onclick=()=>print();
  $("lightBtn").onclick=()=>applyTheme("light");$("darkBtn").onclick=()=>applyTheme("dark");
+ document.addEventListener("click",e=>{
+  const id=e.target&&e.target.id;
+  if(id==="clearBtn"){e.preventDefault();clearAllMeasurements()}
+  if(id&&id.startsWith("clearMode")){e.preventDefault();clearOneMeasurement(Number(id.replace("clearMode","")))}
+ });
 });
+
+window.clearAllMeasurements=clearAllMeasurements;
+window.clearOneMeasurement=clearOneMeasurement;
