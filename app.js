@@ -34,7 +34,7 @@ function buildTable(){
   tr.innerHTML=`<td>${i}</td>${[1,2,3,4].map(c=>`<td><button data-edit="${i},${c}" id="v${c}_${i}"></button></td>`).join("")}<td id="m_${i}"></td><td id="co_${i}"></td><td id="cu_${i}"></td>`;
   tb.appendChild(tr);
  }
- tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.row=r;state.mode=c;state.buf=currentValue();$("tableWrap").classList.add("hidden");render();scrollTo({top:0,behavior:"smooth"})});
+ tb.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const [r,c]=b.dataset.edit.split(",").map(Number);state.row=r;state.mode=c;state.buf=currentValue();update(false);$("tableWrap").classList.add("hidden");render();scrollTo({top:0,behavior:"smooth"})});
 }
 function currentValue(){if(state.N===0||state.row<1)return"";const v=state.vals[state.row-1][state.mode-1];return v===null?"":String(Math.abs(v))}
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
  buildTable();update(false);renderHistory();
- document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{state.mode=Number(b.dataset.mode);state.row=1;state.buf=currentValue();render()});
+ document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{state.mode=Number(b.dataset.mode);state.row=1;state.buf=currentValue();update(false);render()});
  document.querySelectorAll("[data-count]").forEach(b=>b.onclick=()=>setCount(Number(b.dataset.count)));
  document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{if(state.buf==="0")state.buf=b.dataset.key;else state.buf+=b.dataset.key;render()});
  $("countMinus").onclick=()=>setCount(state.N-1);$("countPlus").onclick=()=>setCount(state.N+1);$("pointCountInput").onchange=setCountFromInput;$("pointCountInput").onblur=setCountFromInput;
