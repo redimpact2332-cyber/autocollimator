@@ -58,7 +58,7 @@ function update(doSave=true){
  const ok=state.tolerance>0 ? result.dev.maxDev<=state.tolerance : null;
  $("judgeText").textContent=ok===null?"---":(ok?"PASS":"NG");$("judgeText").className=ok===null?"":(ok?"pass":"ng");
  $("devDetailText").textContent=`測定${state.mode}：左 ${fmt(result.dev.left.maxDev)} / 中央 ${fmt(result.dev.center.maxDev)} / 右 ${fmt(result.dev.right.maxDev)}`;
- for(const r of result.rows){for(let c=1;c<=4;c++)$("v"+c+"_"+r.pos).textContent=fmt(r.vals[c-1]);$("m_"+r.pos).textContent=fmt(r.m);$("co_"+r.pos).textContent=fmt(r.co);$("cu_"+r.pos).textContent=fmt(r.cu)}
+ for(const r of result.rows){for(let c=1;c<=4;c++)$("v"+c+"_"+r.pos).textContent=fmt(r.vals[c-1]);$("m_"+r.pos).textContent=r.pos===1?fmt(result.avg):"";$("co_"+r.pos).textContent=fmt(r.co);$("cu_"+r.pos).textContent=fmt(r.cu)}
  drawGraph($("graph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});render();if(doSave)save();
 }
 function showShot(){
@@ -71,7 +71,7 @@ function showShot(){
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollTo({top:0})}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
-function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),fmt(r.m),fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
+function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),r.pos===1?fmt(result.avg):"",fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
 function jsonOut(){save();download("autocollimator_data.json",JSON.stringify(state,null,2),"application/json")}
 function history(){try{return JSON.parse(localStorage.getItem(HISTORY)||"[]")}catch(e){return[]}}
 function saveHistory(){save();const h=history();h.unshift({time:new Date().toLocaleString(),title:`${state.meta.serial||""} ${state.meta.name||""}`.trim()||"測定データ",data:JSON.parse(JSON.stringify(state))});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,50)));renderHistory();alert("履歴保存しました")}
