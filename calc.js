@@ -38,21 +38,23 @@ function calcSeries(state){
  return {avg,data,rows,dev,last:rows.length?rows[rows.length-1].cu:NaN};
 }
 function calcDeviation(data,state){
- const s=state.rangeStart,e=state.rangeEnd;
- const ps=data.find(d=>d.p===s&&Number.isFinite(d.y));
+ const rangeStart=state.rangeStart,rangeEnd=state.rangeEnd;
+ const e=rangeEnd;
+ const lineStart=rangeStart===1?0:rangeStart;
+ const ps=data.find(d=>d.p===lineStart&&Number.isFinite(d.y));
  const pe=data.find(d=>d.p===e&&Number.isFinite(d.y));
  const blank={maxDev:0,devPoint:null};
- if(!ps||!pe||s===e)return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank}};
- const lineYAt=p=>ps.y+(pe.y-ps.y)*(p-s)/(e-s);
+ if(!ps||!pe||lineStart===e)return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank}};
+ const lineYAt=p=>ps.y+(pe.y-ps.y)*(p-lineStart)/(e-lineStart);
  const sections={left:{maxDev:0,devPoint:null},center:{maxDev:0,devPoint:null},right:{maxDev:0,devPoint:null}};
  for(const d of data){
   if(!Number.isFinite(d.y))continue;
   const ly=lineYAt(d.p),dv=Math.abs(d.y-ly);
-  const key=d.p<s?'left':(d.p>e?'right':'center');
+  const key=d.p<lineStart?'left':(d.p>e?'right':'center');
   if(dv>sections[key].maxDev)sections[key]={maxDev:dv,devPoint:{p:d.p,y:d.y,lineY:ly,dev:dv}};
  }
  for(const k of ['left','center','right'])sections[k].maxDev=half(sections[k].maxDev);
  let maxObj=sections.left;
  for(const k of ['center','right'])if(sections[k].maxDev>maxObj.maxDev)maxObj=sections[k];
- return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s,e,y1:ps.y,y2:pe.y,lineYAt},...sections};
+ return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s:lineStart,e,y1:ps.y,y2:pe.y,lineYAt},...sections};
 }
