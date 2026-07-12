@@ -276,13 +276,19 @@ function buildFieldPrintPage(mode){
     <tr><th class="measureCol">1</th><th class="measureCol">2</th><th class="avgCol">平均</th></tr></thead>
     <tbody>${rows.join("")}</tbody>
    </table></div>
-   <div class="fieldGraphWrap"><div class="fieldGraphHeading">図示（単位 0.001mm）</div><canvas class="fieldPrintGraph" width="1000" height="1700"></canvas></div>
+   <div class="fieldGraphWrap">
+    <div class="fieldGraphHeading">
+      <div class="fieldGraphTitle">図示（単位 0.001mm）</div>
+      <div class="fieldScaleLabels"></div>
+    </div>
+    <canvas class="fieldPrintGraph" width="1000" height="1700"></canvas>
+   </div>
   </div>
   <div class="fieldFooter">
    <div>判定<b>${judgement}</b></div><div>平均<b>${fmt(pr.avg)}</b></div><div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
    <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div><div class="notePrint">備考：${state.meta.note||""}</div>
   </div>`;
- requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{}));
+ requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{measureCount:ps.N}));
  return page;
 }
 function setPrintPreviewMode(mode){

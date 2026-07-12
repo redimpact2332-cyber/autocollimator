@@ -101,3 +101,74 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
  body.printing-selected .printSheet:not(.active){display:none!important}
  .printSheet:last-child{page-break-after:auto;break-after:auto}
 }
+
+
+/* v8.6 印刷品質調整 */
+.printSheet,
+.printSheet *{
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+.printSheet,
+.printSheet table,
+.printSheet th,
+.printSheet td,
+.printSheet .fieldPrintTitle,
+.printSheet .fieldGraphHeading,
+.printSheet .fieldFooter,
+.printSheet .fieldMeta,
+.printSheet .fieldTable{
+  background:#fff!important;
+  color:#000!important;
+}
+.printSheet th,
+.printSheet td{
+  border-color:#000!important;
+}
+.fieldGraphHeading{
+  padding:0!important;
+  display:grid!important;
+  grid-template-rows:6.5mm 6.5mm;
+  align-items:stretch!important;
+}
+.fieldGraphTitle{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  border-bottom:1px solid #000;
+  font-size:9pt;
+  font-weight:700;
+}
+.fieldScaleLabels{
+  position:relative;
+  height:100%;
+  overflow:visible;
+  font-size:6.5pt;
+  font-weight:500;
+}
+.fieldScaleLabels span{
+  position:absolute;
+  top:50%;
+  transform:translate(-50%,-50%);
+  white-space:nowrap;
+}
+.fieldPrintGraph{
+  display:block;
+  width:100%!important;
+  height:100%!important;
+}
+@media print{
+  .printSheet,
+  .printSheet *{
+    background:#fff!important;
+    color:#000!important;
+    box-shadow:none!important;
+    text-shadow:none!important;
+  }
+  .printSheet th,
+  .printSheet td{
+    background:#fff!important;
+    color:#000!important;
+    border-color:#000!important;
+  }
+}
