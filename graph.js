@@ -86,3 +86,60 @@ function drawGraph(canvas,data,dev,N,options={}){
  }
  g.setLineDash([]);
 }
+
+
+function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
+ if(!canvas)return;
+ const g=canvas.getContext("2d");
+ const w=canvas.width,h=canvas.height;
+ const L=70,R=28,T=72,B=24;
+ const rows=Math.max(1,Number(rowCount)||1);
+ g.clearRect(0,0,w,h);
+ g.fillStyle="#fff";g.fillRect(0,0,w,h);
+ const valid=(data||[]).filter(d=>d.p>=1&&Number.isFinite(d.y));
+ const values=valid.map(d=>d.y);
+ if(dev&&dev.line){
+  for(let p=Math.max(0,dev.line.s);p<=Math.min(rows,dev.line.e);p++){
+   const y=dev.line.lineYAt(p);
+   if(Number.isFinite(y))values.push(y);
+  }
+ }
+ let abs=Math.max(10,...values.map(v=>Math.abs(v)));
+ abs=Math.ceil(abs/5)*5;
+ const min=-abs,max=abs;
+ const xx=v=>L+(v-min)/(max-min)*(w-L-R);
+ const yy=p=>T+((Math.max(1,p)-0.5)/rows)*(h-T-B);
+ g.font="22px sans-serif";g.textAlign="center";g.textBaseline="middle";
+ for(let v=min;v<=max+0.001;v+=0.5){
+  const major=Math.abs(v%5)<0.001;
+  g.strokeStyle=major?"#777":"#b7b7b7";g.lineWidth=major?1.7:0.8;g.setLineDash(major?[]:[5,5]);
+  g.beginPath();g.moveTo(xx(v),T);g.lineTo(xx(v),h-B);g.stroke();
+ }
+ g.setLineDash([]);
+ for(let p=0;p<=rows;p++){
+  const y=T+p/rows*(h-T-B);
+  g.strokeStyle="#9a9a9a";g.lineWidth=0.8;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();
+ }
+ g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(L,T,w-L-R,h-T-B);
+ g.lineWidth=3.5;g.beginPath();g.moveTo(xx(0),T);g.lineTo(xx(0),h-B);g.stroke();
+ g.fillStyle="#000";g.font="22px sans-serif";
+ for(let v=min;v<=max+0.001;v+=5)g.fillText((v>0?"+":"")+fmt(v),xx(v),T-28);
+ if(valid.length){
+  g.strokeStyle="#000";g.lineWidth=4;g.setLineDash([]);g.beginPath();
+  valid.forEach((d,i)=>i?g.lineTo(xx(d.y),yy(d.p)):g.moveTo(xx(d.y),yy(d.p)));g.stroke();
+  g.fillStyle="#000";
+  for(const d of valid){g.beginPath();g.arc(xx(d.y),yy(d.p),4.5,0,Math.PI*2);g.fill()}
+ }
+ if(dev&&dev.line){
+  const s=Math.max(0,dev.line.s),e=Math.min(rows,dev.line.e);
+  const y1=dev.line.lineYAt(s),y2=dev.line.lineYAt(e);
+  if(Number.isFinite(y1)&&Number.isFinite(y2)){
+   const py=p=>p<=0?T:yy(p);
+   g.strokeStyle="#333";g.lineWidth=3;g.setLineDash([12,8]);
+   g.beginPath();g.moveTo(xx(y1),py(s));g.lineTo(xx(y2),py(e));g.stroke();g.setLineDash([]);
+   g.fillStyle="#fff";g.strokeStyle="#000";g.lineWidth=2.5;
+   for(const [p,v] of [[s,y1],[e,y2]]){g.beginPath();g.arc(xx(v),py(p),7,0,Math.PI*2);g.fill();g.stroke()}
+  }
+ }
+ g.setLineDash([]);
+}

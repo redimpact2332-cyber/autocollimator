@@ -58,3 +58,46 @@ button.dangerSub:active{background:#4a2024}
 body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-color:#8d742f!important}
 #graph.manualPick{cursor:crosshair;touch-action:manipulation}
 .graphBtns button.active{box-shadow:inset 0 0 0 2px #007aff}
+
+
+/* v8.5 現場標準レイアウト1 */
+#shotView{background:#737373;min-height:100vh;overflow:auto;padding:12px}
+.printPreviewControls{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:7px;padding:8px;margin:0 auto 10px;max-width:194mm;background:#171b22;border:1px solid #596579;border-radius:10px}
+.printPreviewControls button.active{background:#0b63d1;color:#fff;border-color:#2f8cff}
+#printPages{display:flex;flex-direction:column;align-items:center;gap:12px}
+.printSheet{box-sizing:border-box;width:194mm;height:281mm;padding:3mm;background:#fff;color:#000;border:1px solid #000;display:none;flex-direction:column;page-break-after:always;break-after:page;font-family:"Yu Gothic","Meiryo",sans-serif}
+.printSheet.active{display:flex}
+.fieldPrintTitle{position:relative;height:9mm;display:flex;align-items:center;justify-content:center;font-size:15pt;font-weight:800;letter-spacing:.05em}
+.fieldPrintTitle .modeLabel{position:absolute;right:2mm;bottom:1mm;font-size:9pt;font-weight:700}
+.fieldMeta{width:100%;height:28mm;table-layout:fixed;border-collapse:collapse;font-size:8.5pt}
+.fieldMeta th,.fieldMeta td{border:1px solid #000;padding:1mm 1.4mm;background:#fff;color:#000}
+.fieldMeta th{width:12mm;font-weight:700;white-space:nowrap}
+.fieldMeta .nameCell{text-align:center;font-size:10pt;font-weight:700;line-height:1.45}
+.fieldBody{flex:1;min-height:0;display:grid;grid-template-columns:49.5% 50.5%;border-left:1px solid #000;border-right:1px solid #000;border-bottom:1px solid #000}
+.fieldTableWrap,.fieldGraphWrap{min-width:0;min-height:0}
+.fieldTable{width:100%;height:100%;table-layout:fixed;border-collapse:collapse;font-size:6.6pt}
+.fieldTable th,.fieldTable td{padding:0;height:auto;border:1px solid #000;background:#fff;color:#000;text-align:center;line-height:1}
+.fieldTable thead tr:first-child{height:7mm}
+.fieldTable thead tr:last-child{height:6mm}
+.fieldTable .posCol{width:10%}.fieldTable .measureCol{width:18%}.fieldTable .avgCol{width:18%}.fieldTable .corrCol{width:16%}.fieldTable .cumCol{width:18%}
+.fieldGraphWrap{display:flex;flex-direction:column;border-left:1px solid #000}
+.fieldGraphHeading{height:13mm;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #000;font-size:9pt;font-weight:700}
+.fieldPrintGraph{flex:1;min-height:0;width:100%;height:100%;border:0;background:#fff}
+.fieldFooter{height:14mm;display:grid;grid-template-columns:14% 14% 15% 25% 32%;border-left:1px solid #000;border-right:1px solid #000;border-bottom:1px solid #000;font-size:7.5pt}
+.fieldFooter>div{border-right:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:.5mm}
+.fieldFooter>div:last-child{border-right:0}
+.fieldFooter b{font-size:9pt;margin-top:.5mm}
+.fieldFooter .notePrint{align-items:flex-start;text-align:left;padding-left:2mm;overflow:hidden}
+@media screen and (max-width:820px){#shotView{padding:6px}}
+@page{size:A4 portrait;margin:8mm}
+@media print{
+ html,body{width:auto!important;height:auto!important;background:#fff!important}
+ header,#inputView,.screenOnly{display:none!important}
+ #shotView{display:block!important;padding:0!important;background:#fff!important;overflow:visible!important}
+ #printPages{display:block!important}
+ .printSheet{display:none;width:194mm;height:281mm;padding:3mm;margin:0;border:0;box-shadow:none}
+ body.printing-all .printSheet{display:flex!important}
+ body.printing-selected .printSheet.active{display:flex!important}
+ body.printing-selected .printSheet:not(.active){display:none!important}
+ .printSheet:last-child{page-break-after:auto;break-after:auto}
+}

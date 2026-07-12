@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>オートコリメーター記録 v8.4 SAFE</title>
+  <title>オートコリメーター記録 v8.5 SAFE</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <header>
-  <div class="title">オートコリメーター記録 v8.4 SAFE</div>
+  <div class="title">オートコリメーター記録 v8.5 SAFE</div>
   <div class="topBtns">
     <button id="inputBtn">入力</button>
     <button id="shotBtn">スクショ</button>
@@ -136,26 +136,18 @@
   </section>
 </main>
 
+
 <main id="shotView" class="hidden">
-  <section class="card printCard">
-    <h2>オートコリメーター測定記録</h2>
-    <table class="metaTable">
-      <tbody>
-        <tr><th>製番</th><td id="pSerial"></td><th>形格</th><td id="pModel"></td></tr>
-        <tr><th>名称</th><td id="pName"></td><th>測定日</th><td id="pDate"></td></tr>
-        <tr><th>外気温</th><td id="pOutside"></td><th>機体温度</th><td id="pMachine"></td></tr>
-        <tr><th>測定者</th><td id="pOperator"></td><th>備考</th><td id="pNote"></td></tr>
-      </tbody>
-    </table>
-    <p id="pSummary"></p>
-    <p id="pDevDetail"></p>
-    <canvas id="printGraph" width="900" height="520"></canvas>
-    <div id="printTable"></div>
-    <div class="screenBtns">
-      <button id="backInput1">入力画面へ戻る</button>
-      <button id="doPrint">印刷</button>
-    </div>
-  </section>
+  <div class="printPreviewControls screenOnly">
+    <button id="backInput1">入力画面へ戻る</button>
+    <button data-print-mode="1">測定1</button>
+    <button data-print-mode="2">測定2</button>
+    <button data-print-mode="3">測定3</button>
+    <button data-print-mode="4">測定4</button>
+    <button id="doPrint">表示中を印刷</button>
+    <button id="printAllModes">4測定を印刷</button>
+  </div>
+  <div id="printPages"></div>
 </main>
 
 <script src="./calc.js"></script>

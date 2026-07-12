@@ -218,13 +218,94 @@ function update(doSave=true){
  }
  drawGraph($("graph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});render();if(doSave)save();
 }
+
+let printPreviewMode=1;
+
+function printStateForMode(mode){
+ const i=Math.min(4,Math.max(1,Number(mode)||1))-1;
+ const n=countForMode(i+1);
+ return Object.assign({},state,{
+  mode:i+1,
+  N:n,
+  rangeStart:n?Math.max(1,Math.min(n,Number(state.rangeStarts[i])||1)):0,
+  rangeEnd:n?Math.max(1,Math.min(n,Number(state.rangeEnds[i])||n)):0
+ });
+}
+function formatPrintDate(v){
+ if(!v)return"";
+ const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ return m?`${m[1]}年 ${Number(m[2])}月 ${Number(m[3])}日`:v;
+}
+function printLineCondition(mode,dev){
+ const lm=(state.graphLineModes||[])[mode-1]||"auto";
+ if(lm==="off")return"赤線なし";
+ if(lm==="manual"){
+  const pts=(state.manualLinePoints||[])[mode-1]||[];
+  return pts.length===2?`任意2点 ${pts[0]}→${pts[1]}`:"任意2点 未確定";
+ }
+ if(dev&&dev.line)return`自動 ${dev.line.s}→${dev.line.e}`;
+ return"自動";
+}
+function buildFieldPrintPage(mode){
+ const ps=printStateForMode(mode);
+ const pr=calcSeries(ps);
+ const rowCount=Math.max(53,ps.N||0);
+ const numericRows=pr.rows.filter(r=>Number.isFinite(r.m));
+ const avgRow=numericRows.length?numericRows[0].pos:1;
+ const resultMap=new Map(pr.rows.map(r=>[r.pos,r]));
+ const rows=[];
+ for(let i=1;i<=rowCount;i++){
+  const r=resultMap.get(i);
+  const raw=((state.vals[i-1]||[])[mode-1]);
+  const measured=i<=ps.N?displayValue(raw):"";
+  rows.push(`<tr><td>${i}</td><td>${measured}</td><td></td><td>${i===avgRow?fmt(pr.avg):""}</td><td>${r?fmt(r.co):""}</td><td>${r?fmt(r.cu):""}</td></tr>`);
+ }
+ const judgement=state.tolerance>0?(pr.dev.maxDev<=state.tolerance?"合格":"不合格"):"---";
+ const page=document.createElement("section");
+ page.className="printSheet";page.dataset.mode=String(mode);
+ page.innerHTML=`
+  <div class="fieldPrintTitle">オートコリメーター測定記録用紙<span class="modeLabel">現場標準レイアウト1／測定${mode}</span></div>
+  <table class="fieldMeta"><tbody>
+   <tr><th>製番</th><td>${state.meta.serial||""}</td><th rowspan="3">名称</th><td rowspan="3" class="nameCell">${state.meta.name||""}</td><th>測定日時</th><td>${formatPrintDate(state.meta.date||"")}</td></tr>
+   <tr><th>形格</th><td>${state.meta.model||""}</td><th rowspan="2">測定時温度</th><td rowspan="2">外気温：${state.meta.outsideTemp||""}${state.meta.outsideTemp?" ℃":""}<br>機体温度：${state.meta.machineTemp||""}${state.meta.machineTemp?" ℃":""}</td></tr>
+   <tr><th>測定者</th><td>${state.meta.operator||""}</td></tr>
+  </tbody></table>
+  <div class="fieldBody">
+   <div class="fieldTableWrap"><table class="fieldTable">
+    <thead><tr><th rowspan="2" class="posCol">測定<br>位置</th><th colspan="3">測定値</th><th rowspan="2" class="corrCol">補正</th><th rowspan="2" class="cumCol">累計</th></tr>
+    <tr><th class="measureCol">1</th><th class="measureCol">2</th><th class="avgCol">平均</th></tr></thead>
+    <tbody>${rows.join("")}</tbody>
+   </table></div>
+   <div class="fieldGraphWrap"><div class="fieldGraphHeading">図示（単位 0.001mm）</div><canvas class="fieldPrintGraph" width="1000" height="1700"></canvas></div>
+  </div>
+  <div class="fieldFooter">
+   <div>判定<b>${judgement}</b></div><div>平均<b>${fmt(pr.avg)}</b></div><div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
+   <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div><div class="notePrint">備考：${state.meta.note||""}</div>
+  </div>`;
+ requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{}));
+ return page;
+}
+function setPrintPreviewMode(mode){
+ printPreviewMode=Math.min(4,Math.max(1,Number(mode)||1));
+ document.querySelectorAll(".printSheet").forEach(p=>p.classList.toggle("active",Number(p.dataset.mode)===printPreviewMode));
+ document.querySelectorAll("[data-print-mode]").forEach(b=>b.classList.toggle("active",Number(b.dataset.printMode)===printPreviewMode));
+ scrollTo({top:0,behavior:"auto"});
+}
+function renderPrintPages(){
+ const box=$("printPages");box.innerHTML="";
+ for(let mode=1;mode<=4;mode++)box.appendChild(buildFieldPrintPage(mode));
+ setPrintPreviewMode(printPreviewMode||state.mode);
+}
 function showShot(){
+ save();printPreviewMode=state.mode;
  $("inputView").classList.add("hidden");$("shotView").classList.remove("hidden");
- $("pSerial").textContent=state.meta.serial||"";$("pModel").textContent=state.meta.model||"";$("pName").textContent=state.meta.name||"";$("pDate").textContent=state.meta.date||"";
- $("pOutside").textContent=state.meta.outsideTemp||"";$("pMachine").textContent=state.meta.machineTemp||"";$("pOperator").textContent=state.meta.operator||"";$("pNote").textContent=state.meta.note||"";
- $("pSummary").textContent=`測定${state.mode}　測定位置数：${state.N}　平均範囲：${state.rangeStart}-${state.rangeEnd}　平均：${fmt(result.avg)}　全体最大差：${fmt(result.dev.maxDev)}　判定：${$("judgeText").textContent}`;
- $("pDevDetail").textContent=$("devDetailText").textContent;
- drawGraph($("printGraph"),result.data,result.dev,state.N,{invertY:state.graphInvertY,invertX:state.graphInvertX});$("printTable").innerHTML=`<table>${$("dataTable").innerHTML}</table>`;scrollTo({top:0});
+ renderPrintPages();scrollTo({top:0,behavior:"auto"});
+}
+function runPrint(allModes){
+ document.body.classList.remove("printing-all","printing-selected");
+ document.body.classList.add(allModes?"printing-all":"printing-selected");
+ setTimeout(()=>window.print(),120);
+ setTimeout(()=>document.body.classList.remove("printing-all","printing-selected"),1200);
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPositionStable()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
@@ -294,7 +375,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("graph").addEventListener("click",handleManualGraphTap);
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
- $("inputBtn").onclick=showInput;$("shotBtn").onclick=showShot;$("printBtn").onclick=()=>{showShot();setTimeout(()=>print(),100)};$("backInput1").onclick=showInput;$("doPrint").onclick=()=>print();
+ $("inputBtn").onclick=showInput;
+ $("shotBtn").onclick=showShot;
+ $("printBtn").onclick=showShot;
+ $("backInput1").onclick=showInput;
+ $("doPrint").onclick=()=>runPrint(false);
+ $("printAllModes").onclick=()=>runPrint(true);
+ document.querySelectorAll("[data-print-mode]").forEach(b=>b.onclick=()=>setPrintPreviewMode(Number(b.dataset.printMode)));
  $("lightBtn").onclick=()=>applyTheme("light");$("darkBtn").onclick=()=>applyTheme("dark");
  document.addEventListener("click",e=>{
   const id=e.target&&e.target.id;
