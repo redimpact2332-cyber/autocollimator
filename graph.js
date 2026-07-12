@@ -40,14 +40,36 @@ function drawGraph(canvas,data,dev,N,options={}){
   g.setLineDash([]);g.beginPath();g.moveTo(xs(dev.line.s),yy(lineY(dev.line.s)));g.lineTo(xs(dev.line.e),yy(lineY(dev.line.e)));g.stroke();
   if(dev.line.e<N){g.setLineDash([8,6]);g.beginPath();g.moveTo(xs(dev.line.e),yy(lineY(dev.line.e)));g.lineTo(xs(N),yy(lineY(N)));g.stroke()}
   g.setLineDash([]);
-  const labels=[['左',dev.left,8,-10],['中央',dev.center,8,-10],['右',dev.right,-95,-10]];
   g.font='bold 18px sans-serif';
-  for(const [name,obj,dx,dy] of labels){
-   if(obj&&obj.devPoint){
-    const x=xs(obj.devPoint.p),y1=yy(invertY?-obj.devPoint.y:obj.devPoint.y),y2=yy(lineY(obj.devPoint.p));
-    g.strokeStyle='red';g.lineWidth=2;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,y1);g.lineTo(x,y2);g.stroke();g.setLineDash([]);
-    g.fillStyle='red';g.beginPath();g.arc(x,y1,6,0,Math.PI*2);g.fill();
-    g.fillText(name+' '+fmt(obj.maxDev),Math.max(L+2,Math.min(w-R-95,x+dx)),Math.max(T+20,y1+dy));
+  if(dev.showSignedExtrema){
+   // プラス最大値とマイナス最大値をそれぞれ表示する。
+   const positives=valid.filter(d=>d.y>0);
+   const negatives=valid.filter(d=>d.y<0);
+   const extrema=[];
+   if(positives.length){
+    const maxPoint=positives.reduce((a,b)=>b.y>a.y?b:a);
+    extrema.push({name:'最大',point:maxPoint,color:'red',dx:8,dy:-10});
+   }
+   if(negatives.length){
+    const minPoint=negatives.reduce((a,b)=>b.y<a.y?b:a);
+    extrema.push({name:'最小',point:minPoint,color:'#1687ff',dx:8,dy:28});
+   }
+   for(const ex of extrema){
+    const x=xs(ex.point.p),y1=yy(ex.point.y),y2=yy(lineY(ex.point.p));
+    g.strokeStyle=ex.color;g.lineWidth=2;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,y1);g.lineTo(x,y2);g.stroke();g.setLineDash([]);
+    g.fillStyle=ex.color;g.beginPath();g.arc(x,y1,6,0,Math.PI*2);g.fill();
+    const value=(ex.point.y>0?'+':'')+fmt(ex.point.y);
+    g.fillText(ex.name+' '+value,Math.max(L+2,Math.min(w-R-105,x+ex.dx)),Math.max(T+20,Math.min(h-B-8,y1+ex.dy)));
+   }
+  }else{
+   const labels=[['左',dev.left,8,-10],['中央',dev.center,8,-10],['右',dev.right,-95,-10]];
+   for(const [name,obj,dx,dy] of labels){
+    if(obj&&obj.devPoint){
+     const x=xs(obj.devPoint.p),y1=yy(invertY?-obj.devPoint.y:obj.devPoint.y),y2=yy(lineY(obj.devPoint.p));
+     g.strokeStyle='red';g.lineWidth=2;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,y1);g.lineTo(x,y2);g.stroke();g.setLineDash([]);
+     g.fillStyle='red';g.beginPath();g.arc(x,y1,6,0,Math.PI*2);g.fill();
+     g.fillText(name+' '+fmt(obj.maxDev),Math.max(L+2,Math.min(w-R-95,x+dx)),Math.max(T+20,y1+dy));
+    }
    }
   }
  }

@@ -40,11 +40,20 @@ function calcSeries(state){
 function calcDeviation(data,state){
  const rangeStart=state.rangeStart,rangeEnd=state.rangeEnd;
  const e=rangeEnd;
- const lineStart=rangeStart===1?0:rangeStart;
- const ps=data.find(d=>d.p===lineStart&&Number.isFinite(d.y));
  const pe=data.find(d=>d.p===e&&Number.isFinite(d.y));
+ let lineStart=rangeStart===1?0:rangeStart;
+ // 平均範囲が1始まりで終点がマイナスの場合は、終点より前の
+ // 「最も低いマイナス点」から終点へ基準線を結ぶ。
+ if(rangeStart===1&&pe&&pe.y<0){
+  const negatives=data.filter(d=>d.p>0&&d.p<e&&Number.isFinite(d.y)&&d.y<0);
+  if(negatives.length){
+   const minPoint=negatives.reduce((a,b)=>b.y<a.y?b:a);
+   lineStart=minPoint.p;
+  }
+ }
+ const ps=data.find(d=>d.p===lineStart&&Number.isFinite(d.y));
  const blank={maxDev:0,devPoint:null};
- if(!ps||!pe||lineStart===e)return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank}};
+ if(!ps||!pe||lineStart===e)return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank},showSignedExtrema:false};
  const lineYAt=p=>ps.y+(pe.y-ps.y)*(p-lineStart)/(e-lineStart);
  const sections={left:{maxDev:0,devPoint:null},center:{maxDev:0,devPoint:null},right:{maxDev:0,devPoint:null}};
  for(const d of data){
@@ -56,5 +65,5 @@ function calcDeviation(data,state){
  for(const k of ['left','center','right'])sections[k].maxDev=half(sections[k].maxDev);
  let maxObj=sections.left;
  for(const k of ['center','right'])if(sections[k].maxDev>maxObj.maxDev)maxObj=sections[k];
- return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s:lineStart,e,y1:ps.y,y2:pe.y,lineYAt},...sections};
+ return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s:lineStart,e,y1:ps.y,y2:pe.y,lineYAt},showSignedExtrema:rangeStart===1&&pe.y>=0,...sections};
 }
