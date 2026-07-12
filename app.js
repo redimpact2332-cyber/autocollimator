@@ -288,7 +288,7 @@ function buildFieldPrintPage(mode){
    <div>判定<b>${judgement}</b></div><div>平均<b>${fmt(pr.avg)}</b></div><div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
    <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div><div class="notePrint">備考：${state.meta.note||""}</div>
   </div>`;
- requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{measureCount:ps.N}));
+ requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{measureCount:ps.N,cumulativeData:pr.rows.map(r=>({p:r.pos,y:r.cu}))}));
  return page;
 }
 function setPrintPreviewMode(mode){
@@ -427,16 +427,17 @@ function drawPdfReportCanvas(mode){
  line(graphX,plotY,graphX+graphW,plotY,2);
  pdfDrawText(x,"図示（単位 0.001mm）",graphX+graphW/2,bodyTop+18,graphW-20,19,"center","bold");
 
- const vals=(pr.data||[]).filter(d=>d.p>=0&&Number.isFinite(d.y)).map(d=>d.y);
+ const cumulative=pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}));
+ const vals=cumulative.map(d=>d.y);
  if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
-  for(let p=0;p<=ps.N;p++){const v=pr.dev.line.lineYAt(p);if(Number.isFinite(v))vals.push(v)}
+  for(let p=1;p<=ps.N;p++){const v=pr.dev.line.lineYAt(p);if(Number.isFinite(v))vals.push(v)}
  }
  const vmin=vals.length?Math.min(...vals):0,vmax=vals.length?Math.max(...vals):0;
- let gmin=Math.floor((Math.min(vmin,0)-10)/10)*10,gmax=gmin+100;
- if(vmax>gmax){gmax=Math.ceil((vmax+10)/10)*10;gmin=gmax-100}
- if(vmin<gmin){gmin=Math.floor((vmin-10)/10)*10;gmax=gmin+100}
+ let gmin=Math.floor((vmin-20)/20)*20,gmax=gmin+100;
+ if(vmax+20>gmax){gmax=Math.ceil((vmax+20)/20)*20;gmin=gmax-100}
+ if(vmin-20<gmin){gmin=Math.floor((vmin-20)/20)*20;gmax=gmin+100}
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
- const gy=p=>p<=0?plotY:plotY+((p-.5)/rows)*plotH;
+ const gy=p=>plotY+((p-.5)/rows)*plotH;
 
  for(let i=0;i<=20;i++){
   const v=gmin+i*5,major=i%2===0;
@@ -445,19 +446,18 @@ function drawPdfReportCanvas(mode){
  x.setLineDash([]);
  for(let p=0;p<=rows;p++){const yy=plotY+p/rows*plotH;x.strokeStyle="#999";line(graphX,yy,graphX+graphW,yy,.65)}
  if(gmin<=0&&gmax>=0){x.strokeStyle="#000";line(gx(0),plotY,gx(0),bodyBottom,2.5)}
- for(let v=gmin;v<=gmax;v+=10)pdfDrawText(x,(v>0?"+":"")+v,gx(v),bodyTop+47,58,12,"center");
+ for(let v=Math.ceil(gmin/20)*20;v<=gmax;v+=20)pdfDrawText(x,(v>0?"+":"")+v,gx(v),bodyTop+47,70,12,"center");
 
- const valid=(pr.data||[]).filter(d=>d.p>=0&&Number.isFinite(d.y));
- if(valid.length){
+ if(cumulative.length){
   x.save();x.beginPath();x.rect(graphX,plotY,graphW,plotH);x.clip();
   x.strokeStyle="#000";x.lineWidth=2.5;x.beginPath();
-  valid.forEach((d,i)=>i?x.lineTo(gx(d.y),gy(d.p)):x.moveTo(gx(d.y),gy(d.p)));x.stroke();
-  x.fillStyle="#000";for(const d of valid){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
+  cumulative.forEach((d,i)=>i?x.lineTo(gx(d.y),gy(d.p)):x.moveTo(gx(d.y),gy(d.p)));x.stroke();
+  x.fillStyle="#000";for(const d of cumulative){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
   if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
-   const s=Math.max(0,Math.min(ps.N,Number(pr.dev.line.s)||0)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||0));
+   const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
    const seg=(a,b,dash)=>{const y1=pr.dev.line.lineYAt(a),y2=pr.dev.line.lineYAt(b);if(!Number.isFinite(y1)||!Number.isFinite(y2))return;
     x.setLineDash(dash?[9,6]:[]);x.strokeStyle="#333";x.lineWidth=2;x.beginPath();x.moveTo(gx(y1),gy(a));x.lineTo(gx(y2),gy(b));x.stroke()};
-   if(s>0)seg(0,s,true);seg(s,e,false);if(e<ps.N)seg(e,ps.N,true);x.setLineDash([]);
+   if(s>1)seg(1,s,true);seg(s,e,false);if(e<ps.N)seg(e,ps.N,true);x.setLineDash([]);
   }
   x.restore();
  }

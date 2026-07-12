@@ -91,26 +91,47 @@ function drawGraph(canvas,data,dev,N,options={}){
 function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  if(!canvas)return;
  const g=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
- const L=0,R=0,T=0,B=0,rows=Math.max(1,Number(rowCount)||1);
+ const rows=Math.max(1,Number(rowCount)||1);
  const measureCount=Math.max(0,Math.min(rows,Number(options.measureCount)||0));
- g.clearRect(0,0,w,h);g.fillStyle="#fff";g.fillRect(0,0,w,h);
 
- const valid=(data||[]).filter(d=>d.p>=0&&Number.isFinite(d.y));
- const allValues=valid.map(d=>d.y);
+ g.clearRect(0,0,w,h);
+ g.fillStyle="#fff";g.fillRect(0,0,w,h);
+
+ // 印刷グラフは累計値だけを使う。位置1の点は累計1行目の中心に完全一致。
+ const cumulative=(options.cumulativeData||[])
+  .filter(d=>d.p>=1&&Number.isFinite(d.y))
+  .sort((a,b)=>a.p-b.p);
+
+ const allValues=cumulative.map(d=>d.y);
  if(dev&&dev.line&&typeof dev.line.lineYAt==="function"){
-  for(let p=0;p<=measureCount;p++){const v=dev.line.lineYAt(p);if(Number.isFinite(v))allValues.push(v)}
+  for(let p=1;p<=measureCount;p++){
+   const v=dev.line.lineYAt(p);
+   if(Number.isFinite(v))allValues.push(v);
+  }
  }
- const vMin=allValues.length?Math.min(...allValues):0,vMax=allValues.length?Math.max(...allValues):0;
- let min=Math.floor((Math.min(vMin,0)-10)/10)*10,max=min+100;
- if(vMax>max){max=Math.ceil((vMax+10)/10)*10;min=max-100}
- if(vMin<min){min=Math.floor((vMin-10)/10)*10;max=min+100}
- const xx=v=>L+(v-min)/(max-min)*(w-L-R);
- const yy=p=>p<=0?T:T+((p-.5)/rows)*(h-T-B);
+
+ const vMin=allValues.length?Math.min(...allValues):0;
+ const vMax=allValues.length?Math.max(...allValues):0;
+
+ // 横幅100単位、左右に最低20の余白。開始値は20刻み。
+ let min=Math.floor((vMin-20)/20)*20;
+ let max=min+100;
+ if(vMax+20>max){
+  max=Math.ceil((vMax+20)/20)*20;
+  min=max-100;
+ }
+ if(vMin-20<min){
+  min=Math.floor((vMin-20)/20)*20;
+  max=min+100;
+ }
+
+ const xx=v=>(v-min)/(max-min)*w;
+ const yy=p=>((p-.5)/rows)*h; // 表のp行目中心と完全一致
 
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
  if(scaleBox){
   scaleBox.innerHTML="";
-  for(let v=min;v<=max+.001;v+=10){
+  for(let v=Math.ceil(min/20)*20;v<=max+.001;v+=20){
    const s=document.createElement("span");
    s.textContent=(v>0?"+":"")+String(v);
    s.style.left=`${((v-min)/(max-min))*100}%`;
@@ -118,31 +139,64 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
   }
  }
 
+ // 横20マス、1マス=5。2マス=10。20刻みは4マスごとに表示。
  for(let i=0;i<=20;i++){
-  const v=min+i*5,major=i%2===0;
-  g.strokeStyle=major?"#777":"#bdbdbd";g.lineWidth=major?1.7:.8;g.setLineDash(major?[]:[4,5]);
-  g.beginPath();g.moveTo(xx(v),T);g.lineTo(xx(v),h-B);g.stroke();
+  const v=min+i*5;
+  const major=i%2===0;
+  g.strokeStyle=major?"#777":"#c2c2c2";
+  g.lineWidth=major?1.55:.75;
+  g.setLineDash(major?[]:[4,5]);
+  g.beginPath();g.moveTo(xx(v),0);g.lineTo(xx(v),h);g.stroke();
  }
  g.setLineDash([]);
- for(let p=0;p<=rows;p++){const y=T+p/rows*(h-T-B);g.strokeStyle="#999";g.lineWidth=.8;g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke()}
- g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(L,T,w-L-R,h-T-B);
- if(min<=0&&max>=0){g.lineWidth=3;g.beginPath();g.moveTo(xx(0),T);g.lineTo(xx(0),h-B);g.stroke()}
 
- g.save();g.beginPath();g.rect(L,T,w-L-R,h-T-B);g.clip();
- if(valid.length){
-  g.strokeStyle="#000";g.lineWidth=3.2;g.setLineDash([]);g.beginPath();
-  valid.forEach((d,i)=>i?g.lineTo(xx(d.y),yy(d.p)):g.moveTo(xx(d.y),yy(d.p)));g.stroke();
-  g.fillStyle="#000";for(const d of valid){g.beginPath();g.arc(xx(d.y),yy(d.p),4,0,Math.PI*2);g.fill()}
+ // 横線は左表の53行と同じ比率。
+ for(let p=0;p<=rows;p++){
+  const y=p/rows*h;
+  g.strokeStyle="#999";g.lineWidth=.8;
+  g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();
  }
- if(dev&&dev.line&&typeof dev.line.lineYAt==="function"){
-  const s=Math.max(0,Math.min(measureCount,Number(dev.line.s)||0)),e=Math.max(s,Math.min(measureCount,Number(dev.line.e)||0));
+
+ g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(0,0,w,h);
+ if(min<=0&&max>=0){
+  g.lineWidth=3;
+  g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
+ }
+
+ g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
+
+ if(cumulative.length){
+  g.strokeStyle="#000";g.lineWidth=3.2;g.setLineDash([]);
+  g.beginPath();
+  cumulative.forEach((d,i)=>i?g.lineTo(xx(d.y),yy(d.p)):g.moveTo(xx(d.y),yy(d.p)));
+  g.stroke();
+  g.fillStyle="#000";
+  for(const d of cumulative){
+   g.beginPath();g.arc(xx(d.y),yy(d.p),4,0,Math.PI*2);g.fill();
+  }
+ }
+
+ // 基準線も位置番号の行中心に合わせる。
+ if(dev&&dev.line&&typeof dev.line.lineYAt==="function"&&measureCount>=1){
+  const s=Math.max(1,Math.min(measureCount,Number(dev.line.s)||1));
+  const e=Math.max(s,Math.min(measureCount,Number(dev.line.e)||s));
   const at=p=>{const v=dev.line.lineYAt(p);return Number.isFinite(v)?v:NaN};
-  const seg=(a,b,dash)=>{const y1=at(a),y2=at(b);if(!Number.isFinite(y1)||!Number.isFinite(y2)||b<a)return;
-   g.strokeStyle="#333";g.lineWidth=2.6;g.setLineDash(dash?[10,7]:[]);
-   g.beginPath();g.moveTo(xx(y1),yy(a));g.lineTo(xx(y2),yy(b));g.stroke()};
-  if(s>0)seg(0,s,true);seg(s,e,false);if(e<measureCount)seg(e,measureCount,true);g.setLineDash([]);
-  for(const p of [s,e]){const v=at(p);if(!Number.isFinite(v))continue;g.fillStyle="#fff";g.strokeStyle="#000";g.lineWidth=2;
-   g.beginPath();g.arc(xx(v),yy(p),6.5,0,Math.PI*2);g.fill();g.stroke()}
+  const seg=(a,b,dash)=>{
+   const y1=at(a),y2=at(b);
+   if(!Number.isFinite(y1)||!Number.isFinite(y2)||b<a)return;
+   g.strokeStyle="#333";g.lineWidth=2.5;g.setLineDash(dash?[10,7]:[]);
+   g.beginPath();g.moveTo(xx(y1),yy(a));g.lineTo(xx(y2),yy(b));g.stroke();
+  };
+  if(s>1)seg(1,s,true);
+  seg(s,e,false);
+  if(e<measureCount)seg(e,measureCount,true);
+  g.setLineDash([]);
+  for(const p of [s,e]){
+   const v=at(p);if(!Number.isFinite(v))continue;
+   g.fillStyle="#fff";g.strokeStyle="#000";g.lineWidth=2;
+   g.beginPath();g.arc(xx(v),yy(p),6.5,0,Math.PI*2);g.fill();g.stroke();
+  }
  }
+
  g.restore();g.setLineDash([]);
 }
