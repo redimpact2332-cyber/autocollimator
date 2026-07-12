@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>オートコリメーター記録 v8.3 SAFE</title>
+  <title>オートコリメーター記録 v8.4 SAFE</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <header>
-  <div class="title">オートコリメーター記録 v8.3 SAFE</div>
+  <div class="title">オートコリメーター記録 v8.4 SAFE</div>
   <div class="topBtns">
     <button id="inputBtn">入力</button>
     <button id="shotBtn">スクショ</button>
@@ -87,7 +87,8 @@
       <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button id="backspace">⌫</button>
       <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button id="minusLock">−固定</button>
       <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button id="prevRow">戻る</button>
-      <button data-key="0">0</button><button id="clearBuf">C</button><button id="skipRow">次へ</button><button id="commit" class="enter">決定</button>
+      <button data-key="0">0</button><button id="blankBtn" class="blankBtn">ー<br><small>ブランク</small></button><button id="skipRow">次へ</button><button id="commit" class="enter">決定</button>
+      <button id="clearBuf">C</button>
     </div>
   </section>
 
@@ -100,8 +101,15 @@
   </section>
 
   <section class="card">
-    <div class="rowBtns graphBtns"><button id="graphInvertYBtn">＋−上下反転</button><button id="graphInvertXBtn">左右反転</button></div>
-    <div class="note">グラフ表示だけ反転します。計算値・CSV・保存データは変わりません。</div>
+    <div class="rowBtns graphBtns">
+      <button id="graphInvertYBtn">＋−上下反転</button>
+      <button id="graphInvertXBtn">左右反転</button>
+      <button id="autoLineBtn">自動赤線</button>
+      <button id="manualLineBtn">任意2点</button>
+      <button id="offLineBtn">赤線なし</button>
+    </div>
+    <div id="manualLineStatus" class="note">赤線：自動</div>
+    <div class="note">「任意2点」を選び、グラフ上の測定点を2か所タップすると赤線で結びます。白い測定グラフと計算値は変わりません。</div>
     <div id="devDetailText" class="note">測定1：左 0 / 中央 0 / 右 0</div>
     <canvas id="graph" width="900" height="520"></canvas>
   </section>

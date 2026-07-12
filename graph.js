@@ -73,5 +73,16 @@ function drawGraph(canvas,data,dev,N,options={}){
    }
   }
  }
+ if(dev&&dev.manual&&Array.isArray(dev.pendingPoints)){
+  for(const p of dev.pendingPoints){
+   const point=valid.find(d=>d.p===p);
+   if(!point)continue;
+   const x=xs(point.p),y=yy(point.y);
+   g.fillStyle="#ff9500";
+   g.beginPath();g.arc(x,y,9,0,Math.PI*2);g.fill();
+   g.fillStyle=fg;g.font="bold 16px sans-serif";
+   g.fillText("点"+p,Math.max(L+2,Math.min(w-R-45,x+10)),Math.max(T+18,y-10));
+  }
+ }
  g.setLineDash([]);
 }

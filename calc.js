@@ -1,4 +1,6 @@
+const BLANK_VALUE="__BLANK__";
 function fmt(x){return Number.isFinite(x)?String(Math.round(x*10)/10).replace(/\.0$/,''):''}
+function displayValue(x){return x===BLANK_VALUE?"ー":fmt(x)}
 function half(x){return Math.round(x*2)/2}
 function activeMode(state){return Math.min(4,Math.max(1,Number(state.mode)||1))}
 function measuredAt(state,i){
@@ -34,7 +36,19 @@ function calcSeries(state){
   data.push({p:i+1,y:cu});
   rows.push({pos:i+1,vals:state.vals[i],m,co,cu});
  }
- const dev=calcDeviation(data,state);
+ const mode=Math.min(4,Math.max(1,Number(state.mode)||1))-1;
+ const lineModes=Array.isArray(state.graphLineModes)?state.graphLineModes:["auto","auto","auto","auto"];
+ const manualSets=Array.isArray(state.manualLinePoints)?state.manualLinePoints:[[],[],[],[]];
+ const lineMode=lineModes[mode]||"auto";
+ let dev;
+ if(lineMode==="off"){
+  const blank={maxDev:0,devPoint:null};
+  dev={maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank},showSignedExtrema:false,manual:false};
+ }else if(lineMode==="manual"){
+  dev=calcManualDeviation(data,state,manualSets[mode]||[]);
+ }else{
+  dev=calcDeviation(data,state);
+ }
  return {avg,data,rows,dev,last:rows.length?rows[rows.length-1].cu:NaN};
 }
 function calcDeviation(data,state){
@@ -66,4 +80,34 @@ function calcDeviation(data,state){
  let maxObj=sections.left;
  for(const k of ['center','right'])if(sections[k].maxDev>maxObj.maxDev)maxObj=sections[k];
  return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s:lineStart,e,y1:ps.y,y2:pe.y,lineYAt},showSignedExtrema:rangeStart===1&&pe.y>=0,...sections};
+}
+
+function calcManualDeviation(data,state,points){
+ const chosen=(points||[])
+  .map(Number)
+  .filter(Number.isFinite)
+  .filter((p,i,a)=>a.indexOf(p)===i)
+  .filter(p=>data.some(d=>d.p===p&&Number.isFinite(d.y)))
+  .slice(0,2)
+  .sort((a,b)=>a-b);
+ const blank={maxDev:0,devPoint:null};
+ if(chosen.length<2||chosen[0]===chosen[1]){
+  return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank},showSignedExtrema:false,manual:true,pendingPoints:chosen};
+ }
+ const s=chosen[0],e=chosen[1];
+ const ps=data.find(d=>d.p===s&&Number.isFinite(d.y));
+ const pe=data.find(d=>d.p===e&&Number.isFinite(d.y));
+ if(!ps||!pe)return{maxDev:0,devPoint:null,line:null,left:{...blank},center:{...blank},right:{...blank},showSignedExtrema:false,manual:true,pendingPoints:chosen};
+ const lineYAt=p=>ps.y+(pe.y-ps.y)*(p-s)/(e-s);
+ const sections={left:{maxDev:0,devPoint:null},center:{maxDev:0,devPoint:null},right:{maxDev:0,devPoint:null}};
+ for(const d of data){
+  if(!Number.isFinite(d.y))continue;
+  const ly=lineYAt(d.p),dv=Math.abs(d.y-ly);
+  const key=d.p<s?"left":(d.p>e?"right":"center");
+  if(dv>sections[key].maxDev)sections[key]={maxDev:dv,devPoint:{p:d.p,y:d.y,lineY:ly,dev:dv}};
+ }
+ for(const k of ["left","center","right"])sections[k].maxDev=half(sections[k].maxDev);
+ let maxObj=sections.left;
+ for(const k of ["center","right"])if(sections[k].maxDev>maxObj.maxDev)maxObj=sections[k];
+ return{maxDev:maxObj.maxDev,devPoint:maxObj.devPoint,line:{s,e,y1:ps.y,y2:pe.y,lineYAt},showSignedExtrema:false,manual:true,pendingPoints:chosen,...sections};
 }

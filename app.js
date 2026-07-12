@@ -1,7 +1,7 @@
 const STORAGE="auto_collimator_v7_full";
 const HISTORY="auto_collimator_v7_history";
 const DEFAULT_N=40;
-const state={N:DEFAULT_N,counts:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:DEFAULT_N,rangeStarts:[1,1,1,1],rangeEnds:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],tolerance:0,graphInvertY:false,graphInvertX:false,vals:Array.from({length:DEFAULT_N},()=>[null,null,null,null]),meta:{}};
+const state={N:DEFAULT_N,counts:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],mode:1,row:1,buf:"",minusLock:false,rangeStart:1,rangeEnd:DEFAULT_N,rangeStarts:[1,1,1,1],rangeEnds:[DEFAULT_N,DEFAULT_N,DEFAULT_N,DEFAULT_N],tolerance:0,graphInvertY:false,graphInvertX:false,graphLineModes:["auto","auto","auto","auto"],manualLinePoints:[[],[],[],[]],vals:Array.from({length:DEFAULT_N},()=>[null,null,null,null]),meta:{}};
 let result=null, undoStack=[], redoStack=[];
 const $=id=>document.getElementById(id);
 const THEME_KEY="auto_collimator_theme";
@@ -44,14 +44,14 @@ function applyTheme(theme){
 function loadTheme(){applyTheme(localStorage.getItem(THEME_KEY)||"light")}
 function cloneVals(){return state.vals.map(r=>r.slice())}
 function cloneArr(a){return Array.isArray(a)?a.slice():[]}
-function snapshot(){return {vals:cloneVals(),N:state.N,counts:cloneArr(state.counts),rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,rangeStarts:cloneArr(state.rangeStarts),rangeEnds:cloneArr(state.rangeEnds),tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX,mode:state.mode,row:state.row}}
+function snapshot(){return {vals:cloneVals(),N:state.N,counts:cloneArr(state.counts),rangeStart:state.rangeStart,rangeEnd:state.rangeEnd,rangeStarts:cloneArr(state.rangeStarts),rangeEnds:cloneArr(state.rangeEnds),tolerance:state.tolerance,graphInvertY:state.graphInvertY,graphInvertX:state.graphInvertX,graphLineModes:cloneArr(state.graphLineModes),manualLinePoints:(state.manualLinePoints||[]).map(cloneArr),mode:state.mode,row:state.row}}
 function pushUndo(){saveActiveSettings();undoStack.push(snapshot()); if(undoStack.length>50)undoStack.shift(); redoStack=[]}
 function restore(s){
  state.vals=s.vals.map(r=>r.slice());state.mode=s.mode||state.mode;state.row=s.row||state.row;
  state.counts=s.counts||[s.N||DEFAULT_N,s.N||DEFAULT_N,s.N||DEFAULT_N,s.N||DEFAULT_N];
  state.rangeStarts=s.rangeStarts||[s.rangeStart||1,s.rangeStart||1,s.rangeStart||1,s.rangeStart||1];
  state.rangeEnds=s.rangeEnds||[s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N,s.rangeEnd||DEFAULT_N];
- state.tolerance=s.tolerance||0;state.graphInvertY=!!s.graphInvertY;state.graphInvertX=!!s.graphInvertX;
+ state.tolerance=s.tolerance||0;state.graphInvertY=!!s.graphInvertY;state.graphInvertX=!!s.graphInvertX;state.graphLineModes=s.graphLineModes||["auto","auto","auto","auto"];state.manualLinePoints=(s.manualLinePoints||[[],[],[],[]]).map(cloneArr);
  normalize();buildTable();update(false)
 }
 function normalize(){
@@ -78,6 +78,10 @@ function normalize(){
  if(state.N===0)state.row=0;else state.row=Math.min(Math.max(1,state.row),state.N);
  state.tolerance=Math.max(0,Number(state.tolerance)||0);
  state.graphInvertY=!!state.graphInvertY;state.graphInvertX=!!state.graphInvertX;
+ if(!Array.isArray(state.graphLineModes)||state.graphLineModes.length<4)state.graphLineModes=["auto","auto","auto","auto"];
+ state.graphLineModes=state.graphLineModes.slice(0,4).map(v=>["auto","manual","off"].includes(v)?v:"auto");
+ if(!Array.isArray(state.manualLinePoints)||state.manualLinePoints.length<4)state.manualLinePoints=[[],[],[],[]];
+ state.manualLinePoints=state.manualLinePoints.slice(0,4).map(a=>Array.isArray(a)?a.map(Number).filter(Number.isFinite).slice(0,2):[]);
 }
 function metaIds(){return ["serial","model","name","date","outsideTemp","machineTemp","operator","note"]}
 function save(){saveActiveSettings();metaIds().forEach(id=>state.meta[id]=$(id).value);state.tolerance=Number($("toleranceInput").value)||0;localStorage.setItem(STORAGE,JSON.stringify(state))}
@@ -120,10 +124,19 @@ function buildTable(){
   scrollToEditPositionStable();
  });
 }
-function currentValue(){if(state.N===0||state.row<1)return"";const row=state.vals[state.row-1]||[];const v=row[state.mode-1];return v===null||v===undefined?"":String(Math.abs(v))}
+function currentValue(){if(state.N===0||state.row<1)return"";const row=state.vals[state.row-1]||[];const v=row[state.mode-1];return v===null||v===undefined||v===BLANK_VALUE?"":String(Math.abs(v))}
 function inputNumber(){if(state.buf==="")return NaN;let x=Number(state.buf);if(state.minusLock&&x>0)x=-x;return x}
 function moveNext(){if(state.N===0){state.row=0;return} if(state.row<state.N)state.row++; else if(state.mode<4){saveActiveSettings();state.mode++;normalize();state.row=1}else state.row=state.N}
 function commit(){if(state.N===0)return;const x=inputNumber();if(Number.isFinite(x)){pushUndo();while(state.vals.length<state.row)state.vals.push([null,null,null,null]);state.vals[state.row-1][state.mode-1]=x;moveNext();state.buf=currentValue();update()}}
+function commitBlank(){
+ if(state.N===0)return;
+ pushUndo();
+ while(state.vals.length<state.row)state.vals.push([null,null,null,null]);
+ state.vals[state.row-1][state.mode-1]=BLANK_VALUE;
+ moveNext();
+ state.buf=currentValue();
+ update();
+}
 function ensureValueRows(){const need=Math.max(100,state.vals.length,tableRowCount(),maxCount());while(state.vals.length<need)state.vals.push([null,null,null,null])}
 function clearAllMeasurements(){
  saveActiveSettings();
@@ -163,6 +176,20 @@ function render(){
  const yb=$("graphInvertYBtn"), xb=$("graphInvertXBtn");
  if(yb){yb.classList.toggle("active",state.graphInvertY);yb.textContent=state.graphInvertY?"＋−上下反転中":"＋−上下反転"}
  if(xb){xb.classList.toggle("active",state.graphInvertX);xb.textContent=state.graphInvertX?"左右反転中":"左右反転"}
+ const lm=(state.graphLineModes||[])[mi()]||"auto";
+ const pts=((state.manualLinePoints||[])[mi()]||[]);
+ const ab=$("autoLineBtn"),mb=$("manualLineBtn"),ob=$("offLineBtn"),st=$("manualLineStatus"),cv=$("graph");
+ if(ab)ab.classList.toggle("active",lm==="auto");
+ if(mb)mb.classList.toggle("active",lm==="manual");
+ if(ob)ob.classList.toggle("active",lm==="off");
+ if(cv)cv.classList.toggle("manualPick",lm==="manual");
+ if(st){
+  if(lm==="auto")st.textContent="赤線：自動";
+  else if(lm==="off")st.textContent="赤線：なし";
+  else if(pts.length===0)st.textContent="任意2点：始点をタップ";
+  else if(pts.length===1)st.textContent=`任意2点：始点 ${pts[0]} ／ 終点をタップ`;
+  else st.textContent=`任意2点：${pts[0]} → ${pts[1]}（次のタップで選び直し）`;
+ }
 }
 function update(doSave=true){
  normalize(); result=calcSeries(state);
@@ -180,7 +207,7 @@ function update(doSave=true){
     const enabled=i<=countForMode(c);
     el.disabled=!enabled;
     el.classList.toggle("disabledCell",!enabled);
-    el.textContent=enabled?fmt(vals[c-1]):"";
+    el.textContent=enabled?displayValue(vals[c-1]):"";
    }
   }
   const r=resultMap.get(i);
@@ -201,11 +228,47 @@ function showShot(){
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPositionStable()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
-function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(fmt),r.pos===1?fmt(result.avg):"",fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
+function csvOut(){const rows=[["位置","測定1","測定2","測定3","測定4",`測定${state.mode}平均`,`測定${state.mode}補正`,`測定${state.mode}累計`]];result.rows.forEach(r=>rows.push([r.pos,...r.vals.map(displayValue),r.pos===1?fmt(result.avg):"",fmt(r.co),fmt(r.cu)]));download("autocollimator.csv","\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n"),"text/csv")}
 function jsonOut(){save();download("autocollimator_data.json",JSON.stringify(state,null,2),"application/json")}
 function history(){try{return JSON.parse(localStorage.getItem(HISTORY)||"[]")}catch(e){return[]}}
 function saveHistory(){save();const h=history();h.unshift({time:new Date().toLocaleString(),title:`${state.meta.serial||""} ${state.meta.name||""}`.trim()||"測定データ",data:JSON.parse(JSON.stringify(state))});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,50)));renderHistory();alert("履歴保存しました")}
 function renderHistory(){const h=history(),box=$("historyList");box.innerHTML="";h.forEach((item,i)=>{const div=document.createElement("div");div.className="histItem";div.innerHTML=`<span>${item.time} / ${item.title}</span><span><button data-load="${i}">読込</button><button data-del="${i}">削除</button></span>`;box.appendChild(div)});box.querySelectorAll("[data-load]").forEach(b=>b.onclick=()=>{Object.assign(state,h[Number(b.dataset.load)].data);normalize();buildTable();update()});box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const arr=history();arr.splice(Number(b.dataset.del),1);localStorage.setItem(HISTORY,JSON.stringify(arr));renderHistory()})}
+
+function setGraphLineMode(mode){
+ const i=mi();
+ state.graphLineModes[i]=mode;
+ if(mode==="manual"&&!Array.isArray(state.manualLinePoints[i]))state.manualLinePoints[i]=[];
+ update();
+}
+function graphPointFromEvent(event){
+ const canvas=$("graph");
+ if(!canvas||!result)return null;
+ const rect=canvas.getBoundingClientRect();
+ const scaleX=canvas.width/rect.width;
+ const x=(event.clientX-rect.left)*scaleX;
+ const L=64,R=22,w=canvas.width;
+ const usable=w-L-R;
+ if(usable<=0)return null;
+ let t=(x-L)/usable;
+ t=Math.max(0,Math.min(1,t));
+ if(state.graphInvertX)t=1-t;
+ const guessed=Math.round(t*Math.max(1,state.N));
+ const valid=(result.data||[]).filter(d=>Number.isFinite(d.y));
+ if(!valid.length)return null;
+ return valid.reduce((best,d)=>Math.abs(d.p-guessed)<Math.abs(best.p-guessed)?d:best).p;
+}
+function handleManualGraphTap(event){
+ if(((state.graphLineModes||[])[mi()]||"auto")!=="manual")return;
+ const p=graphPointFromEvent(event);
+ if(p===null)return;
+ const i=mi();
+ let pts=Array.isArray(state.manualLinePoints[i])?state.manualLinePoints[i].slice(0,2):[];
+ if(pts.length>=2)pts=[];
+ if(!pts.includes(p))pts.push(p);
+ state.manualLinePoints[i]=pts;
+ update();
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
  load();metaIds().forEach(id=>{$(id).value=state.meta[id]||"";$(id).oninput=()=>{state.meta[id]=$(id).value;save()}});
@@ -217,7 +280,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  $("rangeStartInput").onchange=setRangeFromInputs;$("rangeStartInput").onblur=setRangeFromInputs;$("rangeEndInput").onchange=setRangeFromInputs;$("rangeEndInput").onblur=setRangeFromInputs;$("toleranceInput").onchange=()=>{state.tolerance=Number($("toleranceInput").value)||0;update()};
  $("rangeStartMinus").onclick=()=>{state.rangeStart=Math.max(1,state.rangeStart-1);saveActiveSettings();update()};$("rangeStartPlus").onclick=()=>{state.rangeStart=Math.min(state.N,state.rangeStart+1);if(state.rangeStart>state.rangeEnd)state.rangeEnd=state.rangeStart;saveActiveSettings();update()};
  $("rangeEndMinus").onclick=()=>{state.rangeEnd=Math.max(1,state.rangeEnd-1);if(state.rangeEnd<state.rangeStart)state.rangeStart=state.rangeEnd;saveActiveSettings();update()};$("rangeEndPlus").onclick=()=>{state.rangeEnd=Math.min(state.N,state.rangeEnd+1);saveActiveSettings();update()};$("rangeAll").onclick=()=>{state.rangeStart=state.N?1:0;state.rangeEnd=state.N;saveActiveSettings();update()};
- $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
+ $("backspace").onclick=()=>{state.buf=state.buf.slice(0,-1);render()};$("clearBuf").onclick=()=>{state.buf="";render()};$("blankBtn").onclick=commitBlank;$("minusLock").onclick=()=>{state.minusLock=!state.minusLock;render()};
  $("prevRow").onclick=()=>{if(state.row>1)state.row--;state.buf=currentValue();render()};$("skipRow").onclick=()=>{moveNext();state.buf=currentValue();render()};$("commit").onclick=commit;
  const clearAllBtn=$("clearBtn"); if(clearAllBtn) clearAllBtn.onclick=clearAllMeasurements;
  for(let cm=1;cm<=4;cm++){
@@ -225,6 +288,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   if(btn) btn.onclick=()=>clearOneMeasurement(cm);
  }
  $("graphInvertYBtn").onclick=()=>{state.graphInvertY=!state.graphInvertY;update()};$("graphInvertXBtn").onclick=()=>{state.graphInvertX=!state.graphInvertX;update()};
+ $("autoLineBtn").onclick=()=>setGraphLineMode("auto");
+ $("manualLineBtn").onclick=()=>setGraphLineMode("manual");
+ $("offLineBtn").onclick=()=>setGraphLineMode("off");
+ $("graph").addEventListener("click",handleManualGraphTap);
  $("toggleTable").onclick=()=>$("tableWrap").classList.toggle("hidden");$("csvBtn").onclick=csvOut;$("jsonBtn").onclick=jsonOut;$("historySaveBtn").onclick=saveHistory;$("historyToggleBtn").onclick=()=>$("historyWrap").classList.toggle("hidden");
  $("jsonLoad").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{Object.assign(state,JSON.parse(rd.result));normalize();buildTable();update()}catch(err){alert("読込に失敗しました")}};rd.readAsText(f)};
  $("inputBtn").onclick=showInput;$("shotBtn").onclick=showShot;$("printBtn").onclick=()=>{showShot();setTimeout(()=>print(),100)};$("backInput1").onclick=showInput;$("doPrint").onclick=()=>print();
