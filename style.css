@@ -172,3 +172,29 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
     border-color:#000!important;
   }
 }
+
+
+/* v8.7 印刷レイアウト微調整 */
+.fieldBody{
+  column-gap:0!important;
+  gap:0!important;
+}
+.fieldTableWrap{
+  margin:0!important;
+  padding:0!important;
+}
+.fieldGraphWrap{
+  margin:0!important;
+  padding:0!important;
+  border-left:0!important;
+}
+.fieldTable{
+  border-right:1px solid #000!important;
+}
+.fieldPrintGraph{
+  margin:0!important;
+  padding:0!important;
+}
+.fieldScaleLabels span{
+  font-size:6.2pt!important;
+}

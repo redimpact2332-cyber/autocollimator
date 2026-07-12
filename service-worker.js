@@ -1,4 +1,4 @@
-const CACHE="autocollimator-v8-6-print-alignment-fix";
+const CACHE="autocollimator-v8-7-fixed-20grid";
 const ASSETS=["./","./index.html","./style.css","./calc.js","./graph.js","./app.js","./manifest.json"];
 self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
