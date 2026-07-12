@@ -288,7 +288,25 @@ function buildFieldPrintPage(mode){
    <div>判定<b>${judgement}</b></div><div>平均<b>${fmt(pr.avg)}</b></div><div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
    <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div><div class="notePrint">備考：${state.meta.note||""}</div>
   </div>`;
- requestAnimationFrame(()=>drawFieldPrintGraph(page.querySelector(".fieldPrintGraph"),pr.data,pr.dev,rowCount,{measureCount:ps.N,cumulativeData:pr.rows.map(r=>({p:r.pos,y:r.cu}))}));
+ requestAnimationFrame(()=>{
+  const cv=page.querySelector(".fieldPrintGraph");
+  const trList=[...page.querySelectorAll(".fieldTable tbody tr")];
+  const cvRect=cv.getBoundingClientRect();
+  const scaleY=cv.height/Math.max(1,cvRect.height);
+  const rowCenters={};
+  trList.forEach((tr,idx)=>{
+    const r=tr.getBoundingClientRect();
+    rowCenters[idx+1]=((r.top+r.bottom)/2-cvRect.top)*scaleY;
+  });
+  const first=trList[0]?.getBoundingClientRect();
+  const zeroY=first?(first.top-cvRect.top)*scaleY:0;
+  drawFieldPrintGraph(cv,pr.data,pr.dev,rowCount,{
+    measureCount:ps.N,
+    cumulativeData:pr.rows.map(r=>({p:r.pos,y:r.cu})),
+    rowCenters,
+    zeroY
+  });
+});
  return page;
 }
 function setPrintPreviewMode(mode){
@@ -427,7 +445,7 @@ function drawPdfReportCanvas(mode){
  line(graphX,plotY,graphX+graphW,plotY,2);
  pdfDrawText(x,"図示（単位 0.001mm）",graphX+graphW/2,bodyTop+18,graphW-20,19,"center","bold");
 
- const cumulative=pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}));
+ const cumulative=[{p:0,y:0},...pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}))];
  const vals=cumulative.map(d=>d.y);
  if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
   for(let p=1;p<=ps.N;p++){const v=pr.dev.line.lineYAt(p);if(Number.isFinite(v))vals.push(v)}
@@ -437,7 +455,7 @@ function drawPdfReportCanvas(mode){
  if(vmax+20>gmax){gmax=Math.ceil((vmax+20)/20)*20;gmin=gmax-100}
  if(vmin-20<gmin){gmin=Math.floor((vmin-20)/20)*20;gmax=gmin+100}
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
- const gy=p=>plotY+((p-.5)/rows)*plotH;
+ const gy=p=>p<=0?plotY:plotY+((p-.5)/rows)*plotH;
 
  for(let i=0;i<=20;i++){
   const v=gmin+i*5,major=i%2===0;
