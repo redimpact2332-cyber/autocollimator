@@ -124,18 +124,7 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  };
 
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
- if(scaleBox){
-  scaleBox.innerHTML="";
-  const firstLabel=Math.ceil(min/10)*10;
-  for(let v=firstLabel;v<=max+.001;v+=10){
-   const pct=((v-min)/(max-min))*100;
-   if(pct<2||pct>98)continue;
-   const s=document.createElement("span");
-   s.textContent=(v>0?"+":"")+String(v);
-   s.style.left=`${pct}%`;
-   scaleBox.appendChild(s);
-  }
- }
+ if(scaleBox)scaleBox.innerHTML="";
 
  // Scan form style: solid every 10, dashed halfway.
  const start10=Math.ceil(min/10)*10;

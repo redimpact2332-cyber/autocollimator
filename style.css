@@ -533,3 +533,64 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
  }
  .printSheet:last-child{page-break-after:auto!important;break-after:auto!important}
 }
+
+
+/* v9.3 仕上げ版：目盛数字非表示・A4一枚固定 */
+.fieldScaleLabels{
+  visibility:hidden!important;
+}
+.fieldScaleLabels span{
+  display:none!important;
+}
+.fieldGraphHeading{
+  grid-template-rows:4.4mm 4.3mm!important;
+}
+.printSheet{
+  width:194mm!important;
+  height:278mm!important;
+  padding:4mm 8mm 5mm!important;
+}
+.originalTopCode{height:5.5mm!important}
+.originalMeta{height:16mm!important}
+.originalFooter{height:9.5mm!important}
+.fieldGraphTitle{font-size:6.5pt!important}
+
+@media print{
+  @page{size:A4 portrait;margin:0!important}
+  html,body{
+    margin:0!important;
+    padding:0!important;
+    width:210mm!important;
+    height:297mm!important;
+    overflow:hidden!important;
+  }
+  #shotView{
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  #printPages{
+    margin:0!important;
+    padding:0!important;
+    display:block!important;
+  }
+  .printSheet{
+    box-sizing:border-box!important;
+    width:210mm!important;
+    height:294mm!important;
+    max-height:294mm!important;
+    padding:7mm 16mm 7mm!important;
+    overflow:hidden!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+    page-break-after:always!important;
+    break-after:page!important;
+  }
+  .printSheet:last-child{
+    page-break-after:auto!important;
+    break-after:auto!important;
+  }
+  .originalTopCode{height:5mm!important}
+  .originalMeta{height:15.5mm!important}
+  .originalFooter{height:9mm!important}
+}

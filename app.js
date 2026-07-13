@@ -482,7 +482,7 @@ function drawPdfReportCanvas(mode){
  x.setLineDash([]);
  for(let p=0;p<=rows;p++){const yy=plotY+p/rows*plotH;x.strokeStyle="#999";line(graphX,yy,graphX+graphW,yy,.65)}
  if(gmin<=0&&gmax>=0){x.strokeStyle="#000";line(gx(0),plotY,gx(0),bodyBottom,2.5)}
- for(let v=Math.ceil(gmin/20)*20;v<=gmax;v+=20)pdfDrawText(x,(v>0?"+":"")+v,gx(v),bodyTop+47,70,12,"center");
+
 
  if(cumulative.length){
   x.save();x.beginPath();x.rect(graphX,plotY,graphW,plotH);x.clip();
