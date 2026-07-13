@@ -334,3 +334,202 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
   padding:12mm 18mm 12mm!important;
  }
 }
+
+
+/* v9.2 スキャン原本完全再現向け上書き */
+.printSheet{
+  width:194mm!important;
+  height:281mm!important;
+  padding:5mm 8mm 6mm!important;
+  border:0!important;
+  font-family:"Yu Gothic","Meiryo",sans-serif!important;
+}
+.originalTopCode{
+  height:7mm;
+  position:relative;
+}
+.originalTopCode::after{
+  content:"";
+  position:absolute;
+  right:0;
+  bottom:1mm;
+  font-size:6.5pt;
+}
+.fieldPrintTitle{display:none!important}
+
+.originalMeta{
+  height:17mm!important;
+  border-collapse:collapse!important;
+  table-layout:fixed!important;
+  font-size:6.8pt!important;
+}
+.originalMeta th,.originalMeta td{
+  border:.32mm solid #000!important;
+  background:#fff!important;
+  color:#000!important;
+  padding:.15mm .6mm!important;
+  line-height:1.05!important;
+  vertical-align:middle!important;
+}
+.originalMeta th{
+  width:11mm!important;
+  font-weight:700!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+}
+.originalMeta .nameHead{
+  width:11mm!important;
+  text-align:left!important;
+}
+.originalMeta .nameCell{
+  width:52mm!important;
+  text-align:left!important;
+  font-size:7pt!important;
+  font-weight:400!important;
+  padding-left:.8mm!important;
+}
+
+.fieldBody{
+  flex:1!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:40.7% 59.3%!important;
+  gap:0!important;
+  border-left:.32mm solid #000!important;
+  border-right:.32mm solid #000!important;
+  border-bottom:0!important;
+}
+.fieldTableWrap,.fieldGraphWrap{
+  min-width:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+.fieldTable{
+  width:100%!important;
+  height:100%!important;
+  table-layout:fixed!important;
+  border-collapse:collapse!important;
+  font-size:6.1pt!important;
+  border-right:.32mm solid #000!important;
+}
+.fieldTable th,.fieldTable td{
+  padding:0!important;
+  border:.25mm solid #000!important;
+  background:#fff!important;
+  color:#000!important;
+  text-align:center!important;
+  line-height:1!important;
+}
+.fieldTable thead tr:first-child{height:4.5mm!important}
+.fieldTable thead tr:last-child{height:4.2mm!important}
+.fieldTable .posCol{width:14%!important}
+.fieldTable .measureCol{width:18%!important}
+.fieldTable .avgCol{width:18%!important}
+.fieldTable .corrCol{width:15%!important}
+.fieldTable .cumCol{width:17%!important}
+
+.fieldGraphWrap{
+  display:flex!important;
+  flex-direction:column!important;
+  border-left:0!important;
+}
+.fieldGraphHeading{
+  height:8.7mm!important;
+  display:grid!important;
+  grid-template-rows:4.4mm 4.3mm!important;
+  border-bottom:.32mm solid #000!important;
+  background:#fff!important;
+  overflow:visible!important;
+}
+.fieldGraphTitle{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:6.8pt!important;
+  font-weight:700!important;
+  border:0!important;
+  white-space:nowrap!important;
+}
+.fieldScaleLabels{
+  position:relative!important;
+  overflow:visible!important;
+  height:100%!important;
+  font-size:5.5pt!important;
+}
+.fieldScaleLabels span{
+  position:absolute!important;
+  top:50%!important;
+  width:10mm!important;
+  margin-left:-5mm!important;
+  transform:translateY(-50%)!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  font-size:5.5pt!important;
+  line-height:1!important;
+}
+.fieldPrintGraph{
+  flex:1!important;
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:#fff!important;
+}
+
+.scanFooterInfo,.fieldFooter{display:none!important}
+.originalFooter{
+  height:10.5mm;
+  display:grid;
+  grid-template-columns:40.7% 18% 18% 23.3%;
+  border-left:.32mm solid #000;
+  border-right:.32mm solid #000;
+  border-bottom:.32mm solid #000;
+  font-size:6.2pt;
+}
+.originalFooter>div{
+  border-right:.32mm solid #000;
+  min-width:0;
+}
+.originalFooter>div:last-child{border-right:0}
+.originalFooterLeft{
+  display:grid;
+  grid-template-rows:repeat(3,1fr);
+}
+.originalFooterLeft>div{
+  display:grid;
+  grid-template-columns:1fr 11mm;
+  border-bottom:.25mm solid #000;
+  align-items:center;
+}
+.originalFooterLeft>div:last-child{border-bottom:0}
+.originalFooterLeft span:first-child{padding-left:1mm}
+.unitCell{
+  height:100%;
+  border-left:.25mm solid #000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.judgeLabel,.judgeValue,.footerBlank{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.judgeValue{font-weight:700}
+
+@media print{
+ @page{size:A4 portrait;margin:0!important}
+ html,body{margin:0!important;padding:0!important;width:210mm!important;height:297mm!important}
+ .printSheet{
+   width:210mm!important;
+   height:297mm!important;
+   padding:8mm 17mm 8mm!important;
+   overflow:hidden!important;
+   page-break-after:always!important;
+   break-after:page!important;
+ }
+ .printSheet:last-child{page-break-after:auto!important;break-after:auto!important}
+}

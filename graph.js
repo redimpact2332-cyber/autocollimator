@@ -126,10 +126,13 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
  if(scaleBox){
   scaleBox.innerHTML="";
-  for(let v=Math.ceil(min/10)*10;v<=max+.001;v+=10){
+  const firstLabel=Math.ceil(min/10)*10;
+  for(let v=firstLabel;v<=max+.001;v+=10){
+   const pct=((v-min)/(max-min))*100;
+   if(pct<2||pct>98)continue;
    const s=document.createElement("span");
    s.textContent=(v>0?"+":"")+String(v);
-   s.style.left=`${((v-min)/(max-min))*100}%`;
+   s.style.left=`${pct}%`;
    scaleBox.appendChild(s);
   }
  }

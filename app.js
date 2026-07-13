@@ -264,12 +264,23 @@ function buildFieldPrintPage(mode){
  const page=document.createElement("section");
  page.className="printSheet";page.dataset.mode=String(mode);
  page.innerHTML=`
-  <div class="fieldPrintTitle">オートコリメーター測定記録用紙<span class="modeLabel">現場標準レイアウト1／測定${mode}</span></div>
-  <table class="fieldMeta"><tbody>
-   <tr><th>製番</th><td>${state.meta.serial||""}</td><th rowspan="3">名称</th><td rowspan="3" class="nameCell">${state.meta.name||""}</td><th>測定日時</th><td>${formatPrintDate(state.meta.date||"")}</td></tr>
-   <tr><th>形格</th><td>${state.meta.model||""}</td><th rowspan="2">測定時温度</th><td rowspan="2">外気温：${state.meta.outsideTemp||""}${state.meta.outsideTemp?" ℃":""}<br>機体温度：${state.meta.machineTemp||""}${state.meta.machineTemp?" ℃":""}</td></tr>
-   <tr><th>測定者</th><td>${state.meta.operator||""}</td></tr>
-   <tr><th>測定器</th><td colspan="5"></td></tr>
+  <div class="originalTopCode"></div>
+  <table class="fieldMeta originalMeta"><tbody>
+   <tr>
+    <th>製番</th><td>${state.meta.serial||""}</td>
+    <th rowspan="3" class="nameHead">名称</th>
+    <td rowspan="3" class="nameCell">${state.meta.name||""}</td>
+    <th>測定日時</th><td>${formatPrintDate(state.meta.date||"")}</td>
+   </tr>
+   <tr>
+    <th>型格</th><td>${state.meta.model||""}</td>
+    <th>測定時温度</th>
+    <td>外気温：${state.meta.outsideTemp||""}${state.meta.outsideTemp?" ℃":""}　　機体温度：${state.meta.machineTemp||""}${state.meta.machineTemp?" ℃":""}</td>
+   </tr>
+   <tr>
+    <th>測定者</th><td>${state.meta.operator||""}</td>
+    <th>測定器</th><td></td>
+   </tr>
   </tbody></table>
   <div class="fieldBody">
    <div class="fieldTableWrap"><table class="fieldTable">
@@ -285,22 +296,15 @@ function buildFieldPrintPage(mode){
     <canvas class="fieldPrintGraph" width="1000" height="1700"></canvas>
    </div>
   </div>
-  <div class="scanFooterInfo">
-   <div class="scanFooterLeft">
-    <span>摺動面全長　　mm</span>
-    <span>測定間隔　　　mm</span>
-    <span>測定位置</span>
+  <div class="originalFooter">
+   <div class="originalFooterLeft">
+    <div><span>摺動面全長</span><span class="unitCell">mm</span></div>
+    <div><span>測定間隔</span><span class="unitCell">mm</span></div>
+    <div><span>測定位置</span><span class="unitCell"></span></div>
    </div>
-   <div>判定</div>
-   <div></div>
-   <div></div>
-  </div>
-  <div class="fieldFooter">
-   <div>判定<b>${judgement}</b></div>
-   <div>平均<b>${fmt(pr.avg)}</b></div>
-   <div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
-   <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div>
-   <div class="notePrint">備考：${state.meta.note||""}</div>
+   <div class="judgeLabel">判定</div>
+   <div class="judgeValue">${judgement}</div>
+   <div class="footerBlank"></div>
   </div>`;
  requestAnimationFrame(()=>{
   const cv=page.querySelector(".fieldPrintGraph");
@@ -408,8 +412,8 @@ function drawPdfReportCanvas(mode){
  const line=(x1,y1,x2,y2,w=1)=>{x.beginPath();x.lineWidth=w;x.moveTo(x1,y1);x.lineTo(x2,y2);x.stroke()};
  const rect=(a,b,w,h,lw=1)=>{x.lineWidth=lw;x.strokeRect(a,b,w,h)};
 
- pdfDrawText(x,"オートコリメーター測定記録用紙",W/2,top+titleH/2,W-300,34,"center","bold");
- pdfDrawText(x,`現場標準レイアウト1／測定${mode}`,W-mg,top+titleH/2,280,17,"right","bold");
+ pdfDrawText(x,"",W/2,top+titleH/2,W-300,34,"center","bold");
+ pdfDrawText(x,"",W-mg,top+titleH/2,280,17,"right","bold");
 
  const my=top+titleH,mx=mg,mw=W-2*mg;
  rect(mx,my,mw,metaH,2);
