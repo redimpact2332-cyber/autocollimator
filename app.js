@@ -404,13 +404,15 @@ function preparePrintOnlyHost(allModes){
 }
 
 function runPrint(allModes){
- document.body.classList.remove("printing-all","printing-selected");
- preparePrintOnlyHost(allModes);
- setTimeout(()=>window.print(),350);
- setTimeout(()=>{
-  const host=$("printOnlyHost");
-  if(host)host.innerHTML="";
- },1800);
+ // iPhoneのHTML印刷ではCanvas未描画・空白2ページが発生するため、
+ // 帳票を1ページ固定PDFへ変換してから印刷する。
+ if(allModes){
+  const canvases=[1,2,3,4].map(drawPdfReportCanvas);
+  openReportPdf(makeReportPdf(canvases),"autocollimator_all_measurements.pdf");
+ }else{
+  const canvas=drawPdfReportCanvas(printPreviewMode);
+  openReportPdf(makeReportPdf([canvas]),`autocollimator_measure${printPreviewMode}.pdf`);
+ }
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPositionStable()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
@@ -600,8 +602,8 @@ function openReportPdf(blob,name){
  if(!win){const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}
  setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
-function savePdfSelected(){openReportPdf(makeReportPdf([drawPdfReportCanvas(printPreviewMode)]),`autocollimator_measure${printPreviewMode}.pdf`)}
-function savePdfAll(){openReportPdf(makeReportPdf([1,2,3,4].map(drawPdfReportCanvas)),"autocollimator_all_measurements.pdf")}
+function savePdfSelected(){runPrint(false)}
+function savePdfAll(){runPrint(true)}
 
 document.addEventListener("DOMContentLoaded",()=>{
  loadTheme();
