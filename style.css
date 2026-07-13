@@ -594,3 +594,46 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
   .originalMeta{height:15.5mm!important}
   .originalFooter{height:9mm!important}
 }
+
+
+/* v9.4 印刷反転対応・A4一枚収容強化 */
+.printSheet{
+  width:190mm!important;
+  height:268mm!important;
+  padding:3mm 7mm 4mm!important;
+}
+.originalTopCode{height:4.5mm!important}
+.originalMeta{height:15mm!important}
+.originalFooter{height:8.5mm!important}
+.fieldGraphHeading{height:8mm!important;grid-template-rows:4mm 4mm!important}
+.fieldTable thead tr:first-child{height:4.2mm!important}
+.fieldTable thead tr:last-child{height:3.9mm!important}
+
+@media print{
+  @page{size:A4 portrait;margin:0!important}
+  html,body{
+    margin:0!important;
+    padding:0!important;
+    width:210mm!important;
+    height:297mm!important;
+    overflow:hidden!important;
+  }
+  #shotView,#printPages{
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  .printSheet{
+    width:210mm!important;
+    height:276mm!important;
+    max-height:276mm!important;
+    padding:5mm 17mm 5mm!important;
+    overflow:hidden!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+  }
+  .originalTopCode{height:4mm!important}
+  .originalMeta{height:14.5mm!important}
+  .originalFooter{height:8mm!important}
+  .fieldGraphHeading{height:7.5mm!important;grid-template-rows:3.8mm 3.7mm!important}
+}

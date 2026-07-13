@@ -322,7 +322,9 @@ function buildFieldPrintPage(mode){
     measureCount:ps.N,
     cumulativeData:pr.rows.map(r=>({p:r.pos,y:r.cu})),
     rowCenters,
-    zeroY
+    zeroY,
+    invertY:state.graphInvertY,
+    invertX:state.graphInvertX
   });
 });
  return page;
@@ -403,7 +405,7 @@ function pdfDrawText(ctx,text,x,y,maxWidth,size=24,align="left",weight="normal")
  ctx.fillText(s,x,y);ctx.restore();
 }
 function drawPdfReportCanvas(mode){
- const ps=printStateForMode(mode),pr=calcSeries(ps),rows=Math.max(53,ps.N||0);
+ const ps=printStateForMode(mode),pr=calcSeries(ps),rows=46;
  const W=1240,H=1754,mg=42,top=45,titleH=50,metaH=145,footH=74;
  const c=document.createElement("canvas");c.width=W;c.height=H;
  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,W,H);x.strokeStyle="#000";x.fillStyle="#000";
@@ -463,17 +465,20 @@ function drawPdfReportCanvas(mode){
  line(graphX,plotY,graphX+graphW,plotY,2);
  pdfDrawText(x,"図示（単位 0.001mm）",graphX+graphW/2,bodyTop+18,graphW-20,19,"center","bold");
 
- const cumulative=[{p:0,y:0},...pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}))];
+ const invertY=!!state.graphInvertY,invertX=!!state.graphInvertX;
+ const cumulative=[{p:0,y:0},...pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}))]
+  .map(d=>({p:d.p,y:invertY?-d.y:d.y}));
  const vals=cumulative.map(d=>d.y);
  if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
-  for(let p=1;p<=ps.N;p++){const v=pr.dev.line.lineYAt(p);if(Number.isFinite(v))vals.push(v)}
+  for(let p=1;p<=ps.N;p++){const raw=pr.dev.line.lineYAt(p);const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;if(Number.isFinite(v))vals.push(v)}
  }
  const vmin=vals.length?Math.min(...vals):0,vmax=vals.length?Math.max(...vals):0;
  let gmin=Math.floor((vmin-20)/20)*20,gmax=gmin+100;
  if(vmax+20>gmax){gmax=Math.ceil((vmax+20)/20)*20;gmin=gmax-100}
  if(vmin-20<gmin){gmin=Math.floor((vmin-20)/20)*20;gmax=gmin+100}
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
- const gy=p=>p<=0?plotY:plotY+((p-.5)/rows)*plotH;
+ const displayP=p=>invertX?Math.max(0,ps.N-p):p;
+ const gy=p=>{const q=displayP(p);return q<=0?plotY:plotY+((q-.5)/rows)*plotH;};
 
  for(let i=0;i<=20;i++){
   const v=gmin+i*5,major=i%2===0;
@@ -491,7 +496,7 @@ function drawPdfReportCanvas(mode){
   x.fillStyle="#000";for(const d of cumulative){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
   if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
    const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
-   const seg=(a,b,dash)=>{const y1=pr.dev.line.lineYAt(a),y2=pr.dev.line.lineYAt(b);if(!Number.isFinite(y1)||!Number.isFinite(y2))return;
+   const seg=(a,b,dash)=>{const r1=pr.dev.line.lineYAt(a),r2=pr.dev.line.lineYAt(b);const y1=Number.isFinite(r1)?(invertY?-r1:r1):NaN,y2=Number.isFinite(r2)?(invertY?-r2:r2):NaN;if(!Number.isFinite(y1)||!Number.isFinite(y2))return;
     x.setLineDash(dash?[9,6]:[]);x.strokeStyle="#333";x.lineWidth=2;x.beginPath();x.moveTo(gx(y1),gy(a));x.lineTo(gx(y2),gy(b));x.stroke()};
    if(s>1)seg(1,s,true);seg(s,e,false);if(e<ps.N)seg(e,ps.N,true);x.setLineDash([]);
   }

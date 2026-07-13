@@ -95,18 +95,23 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  const measureCount=Math.max(0,Math.min(rows,Number(options.measureCount)||0));
  const rowCenters=options.rowCenters||{};
  const zeroY=Number.isFinite(options.zeroY)?options.zeroY:0;
+ const invertY=!!options.invertY;
+ const invertX=!!options.invertX;
 
  g.clearRect(0,0,w,h);
  g.fillStyle="#fff";g.fillRect(0,0,w,h);
 
+ // ＋−上下反転は累計値の符号反転、左右反転は測定位置の並び反転として印刷へ反映。
  const cumulative=[{p:0,y:0},...(options.cumulativeData||[])
   .filter(d=>d.p>=1&&d.p<=46&&Number.isFinite(d.y))
-  .sort((a,b)=>a.p-b.p)];
+  .sort((a,b)=>a.p-b.p)]
+  .map(d=>({p:d.p,y:invertY?-d.y:d.y}));
 
  const allValues=cumulative.map(d=>d.y);
  if(dev&&dev.line&&typeof dev.line.lineYAt==="function"){
   for(let p=1;p<=measureCount;p++){
-   const v=dev.line.lineYAt(p);
+   const raw=dev.line.lineYAt(p);
+   const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;
    if(Number.isFinite(v))allValues.push(v);
   }
  }
@@ -114,19 +119,20 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  const vMin=allValues.length?Math.min(...allValues):0;
  const vMax=allValues.length?Math.max(...allValues):0;
  let abs=Math.max(20,Math.ceil(Math.max(Math.abs(vMin),Math.abs(vMax))/10)*10+10);
- let min=-abs,max=abs;
+ const min=-abs,max=abs;
 
  const xx=v=>(v-min)/(max-min)*w;
- const yy=p=>{
+ const baseY=p=>{
   if(p<=0)return zeroY;
   if(Number.isFinite(rowCenters[p]))return rowCenters[p];
   return ((p-.5)/rows)*h;
  };
+ const displayP=p=>invertX?Math.max(0,measureCount-p):p;
+ const yy=p=>baseY(displayP(p));
 
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
  if(scaleBox)scaleBox.innerHTML="";
 
- // Scan form style: solid every 10, dashed halfway.
  const start10=Math.ceil(min/10)*10;
  for(let v=start10;v<=max+.001;v+=10){
   g.strokeStyle="#555";g.lineWidth=1.25;g.setLineDash([]);
@@ -139,9 +145,8 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  }
  g.setLineDash([]);
 
- // Horizontal rules are drawn through actual table row centers.
  for(let p=1;p<=46;p++){
-  const y=yy(p);
+  const y=baseY(p);
   g.strokeStyle="#777";g.lineWidth=.8;
   g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();
  }
@@ -168,7 +173,10 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  if(dev&&dev.line&&typeof dev.line.lineYAt==="function"&&measureCount>=1){
   const s=Math.max(1,Math.min(measureCount,Number(dev.line.s)||1));
   const e=Math.max(s,Math.min(measureCount,Number(dev.line.e)||s));
-  const at=p=>{const v=dev.line.lineYAt(p);return Number.isFinite(v)?v:NaN};
+  const at=p=>{
+   const raw=dev.line.lineYAt(p);
+   return Number.isFinite(raw)?(invertY?-raw:raw):NaN;
+  };
   const seg=(a,b,dash)=>{
    const y1=at(a),y2=at(b);
    if(!Number.isFinite(y1)||!Number.isFinite(y2)||b<a)return;
