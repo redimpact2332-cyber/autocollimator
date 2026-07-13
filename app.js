@@ -536,16 +536,25 @@ function drawPdfReportCanvas(mode){
   for(let p=1;p<=ps.N;p++){const raw=pr.dev.line.lineYAt(p);const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;if(Number.isFinite(v))vals.push(v)}
  }
  const vmin=vals.length?Math.min(...vals):0,vmax=vals.length?Math.max(...vals):0;
- let gmin=Math.floor((vmin-20)/20)*20,gmax=gmin+100;
- if(vmax+20>gmax){gmax=Math.ceil((vmax+20)/20)*20;gmin=gmax-100}
- if(vmin-20<gmin){gmin=Math.floor((vmin-20)/20)*20;gmax=gmin+100}
+ const absNeed=Math.max(20,Math.max(Math.abs(vmin),Math.abs(vmax))*1.10);
+ const niceSteps=[1,2,5,10,20,50,100,200,500,1000];
+ const cellStep=niceSteps.find(s=>s*10>=absNeed)||Math.ceil(absNeed/100)*10;
+ const gmin=-cellStep*10,gmax=cellStep*10;
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
- const displayP=p=>invertX?Math.max(0,ps.N-p):p;
- const gy=p=>{const q=displayP(p);return q<=0?plotY:plotY+((q-.5)/rows)*plotH;};
+ const gy=p=>{
+  if(!invertX){
+   return p<=0?plotY:plotY+((p-.5)/rows)*plotH;
+  }
+  if(p<=0)return plotY+(ps.N/rows)*plotH;
+  const q=ps.N-p+1;
+  return plotY+((q-.5)/rows)*plotH;
+ };
 
  for(let i=0;i<=20;i++){
-  const v=gmin+i*5,major=i%2===0;
-  x.strokeStyle=major?"#666":"#bbb";x.setLineDash(major?[]:[4,4]);line(gx(v),plotY,gx(v),bodyBottom,major?1.35:.7);
+  const v=gmin+i*cellStep,major=i%2===0;
+  x.strokeStyle=major?"#666":"#bbb";
+  x.setLineDash(major?[]:[4,4]);
+  line(gx(v),plotY,gx(v),bodyBottom,major?1.35:.7);
  }
  x.setLineDash([]);
  for(let p=0;p<=rows;p++){const yy=plotY+p/rows*plotH;x.strokeStyle="#999";line(graphX,yy,graphX+graphW,yy,.65)}
@@ -555,8 +564,14 @@ function drawPdfReportCanvas(mode){
  if(cumulative.length){
   x.save();x.beginPath();x.rect(graphX,plotY,graphW,plotH);x.clip();
   x.strokeStyle="#000";x.lineWidth=2.5;x.beginPath();
-  cumulative.forEach((d,i)=>i?x.lineTo(gx(d.y),gy(d.p)):x.moveTo(gx(d.y),gy(d.p)));x.stroke();
-  x.fillStyle="#000";for(const d of cumulative){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
+  if(cumulative.length){
+   const p0=cumulative[0];
+   x.moveTo(gx(p0.y),gy(0));
+   for(let i=1;i<cumulative.length;i++)x.lineTo(gx(cumulative[i].y),gy(cumulative[i].p));
+  }
+  x.stroke();
+  x.fillStyle="#000";
+  for(const d of cumulative){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
   if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
    const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
    const seg=(a,b,dash)=>{const r1=pr.dev.line.lineYAt(a),r2=pr.dev.line.lineYAt(b);const y1=Number.isFinite(r1)?(invertY?-r1:r1):NaN,y2=Number.isFinite(r2)?(invertY?-r2:r2):NaN;if(!Number.isFinite(y1)||!Number.isFinite(y2))return;

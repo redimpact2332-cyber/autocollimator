@@ -101,7 +101,6 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  g.clearRect(0,0,w,h);
  g.fillStyle="#fff";g.fillRect(0,0,w,h);
 
- // ＋−上下反転は累計値の符号反転、左右反転は測定位置の並び反転として印刷へ反映。
  const cumulative=[{p:0,y:0},...(options.cumulativeData||[])
   .filter(d=>d.p>=1&&d.p<=46&&Number.isFinite(d.y))
   .sort((a,b)=>a.p-b.p)]
@@ -118,8 +117,10 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
 
  const vMin=allValues.length?Math.min(...allValues):0;
  const vMax=allValues.length?Math.max(...allValues):0;
- let abs=Math.max(20,Math.ceil(Math.max(Math.abs(vMin),Math.abs(vMax))/10)*10+10);
- const min=-abs,max=abs;
+ const absNeed=Math.max(20,Math.max(Math.abs(vMin),Math.abs(vMax))*1.10);
+ const niceSteps=[1,2,5,10,20,50,100,200,500,1000];
+ const cellStep=niceSteps.find(s=>s*10>=absNeed)||Math.ceil(absNeed/100)*10;
+ const min=-cellStep*10,max=cellStep*10;
 
  const xx=v=>(v-min)/(max-min)*w;
  const baseY=p=>{
@@ -127,21 +128,26 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
   if(Number.isFinite(rowCenters[p]))return rowCenters[p];
   return ((p-.5)/rows)*h;
  };
- const displayP=p=>invertX?Math.max(0,measureCount-p):p;
- const yy=p=>baseY(displayP(p));
+ const yy=p=>{
+  if(!invertX)return p<=0?zeroY:baseY(p);
+  if(p<=0){
+   const last=Number.isFinite(rowCenters[measureCount])?rowCenters[measureCount]:((measureCount-.5)/rows)*h;
+   const prev=measureCount>1&&Number.isFinite(rowCenters[measureCount-1])?rowCenters[measureCount-1]:last-h/rows;
+   return last+(last-prev)/2;
+  }
+  const q=measureCount-p+1;
+  return baseY(q);
+ };
 
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
  if(scaleBox)scaleBox.innerHTML="";
 
- const start10=Math.ceil(min/10)*10;
- for(let v=start10;v<=max+.001;v+=10){
-  g.strokeStyle="#555";g.lineWidth=1.25;g.setLineDash([]);
+ for(let i=0;i<=20;i++){
+  const v=min+i*cellStep,major=i%2===0;
+  g.strokeStyle=major?"#555":"#777";
+  g.lineWidth=major?1.25:.8;
+  g.setLineDash(major?[]:[5,5]);
   g.beginPath();g.moveTo(xx(v),0);g.lineTo(xx(v),h);g.stroke();
-  const mid=v+5;
-  if(mid<max){
-   g.strokeStyle="#777";g.lineWidth=.8;g.setLineDash([5,5]);
-   g.beginPath();g.moveTo(xx(mid),0);g.lineTo(xx(mid),h);g.stroke();
-  }
  }
  g.setLineDash([]);
 
@@ -152,18 +158,18 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  }
 
  g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(0,0,w,h);
- if(min<=0&&max>=0){
-  g.lineWidth=3;
-  g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
- }
+ g.lineWidth=3;
+ g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
 
  g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
 
  if(cumulative.length){
   g.strokeStyle="#000";g.lineWidth=3;g.setLineDash([]);
   g.beginPath();
-  cumulative.forEach((d,i)=>i?g.lineTo(xx(d.y),yy(d.p)):g.moveTo(xx(d.y),yy(d.p)));
+  g.moveTo(xx(0),yy(0));
+  for(let i=1;i<cumulative.length;i++)g.lineTo(xx(cumulative[i].y),yy(cumulative[i].p));
   g.stroke();
+
   g.fillStyle="#000";
   for(const d of cumulative){
    g.beginPath();g.arc(xx(d.y),yy(d.p),3.8,0,Math.PI*2);g.fill();
@@ -188,6 +194,7 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
   if(e<measureCount)seg(e,measureCount,true);
   g.setLineDash([]);
  }
+
  g.restore();
  g.setLineDash([]);
 }
