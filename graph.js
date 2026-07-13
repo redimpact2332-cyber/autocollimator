@@ -106,37 +106,43 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
   .sort((a,b)=>a.p-b.p)]
   .map(d=>({p:d.p,y:invertY?-d.y:d.y}));
 
- const allValues=cumulative.map(d=>d.y);
+ const values=cumulative.map(d=>d.y);
  if(dev&&dev.line&&typeof dev.line.lineYAt==="function"){
   for(let p=1;p<=measureCount;p++){
    const raw=dev.line.lineYAt(p);
    const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;
-   if(Number.isFinite(v))allValues.push(v);
+   if(Number.isFinite(v))values.push(v);
   }
  }
 
- const vMin=allValues.length?Math.min(...allValues):0;
- const vMax=allValues.length?Math.max(...allValues):0;
- const absNeed=Math.max(20,Math.max(Math.abs(vMin),Math.abs(vMax))*1.10);
- const niceSteps=[1,2,5,10,20,50,100,200,500,1000];
- const cellStep=niceSteps.find(s=>s*10>=absNeed)||Math.ceil(absNeed/100)*10;
- const min=-cellStep*10,max=cellStep*10;
-
+ const vmin=values.length?Math.min(...values):0;
+ const vmax=values.length?Math.max(...values):0;
+ const rawSpan=Math.max(1,vmax-vmin);
+ const pad=Math.max(2,rawSpan*.10,Math.max(Math.abs(vmin),Math.abs(vmax))*.04);
+ let min=Math.min(0,vmin)-pad;
+ let max=Math.max(0,vmax)+pad;
+ if(max-min<40){
+  const mid=(min+max)/2;
+  min=mid-20;max=mid+20;
+ }
+ const cellStep=(max-min)/20;
  const xx=v=>(v-min)/(max-min)*w;
+
  const baseY=p=>{
-  if(p<=0)return zeroY;
   if(Number.isFinite(rowCenters[p]))return rowCenters[p];
   return ((p-.5)/rows)*h;
  };
- const yy=p=>{
-  if(!invertX)return p<=0?zeroY:baseY(p);
-  if(p<=0){
-   const last=Number.isFinite(rowCenters[measureCount])?rowCenters[measureCount]:((measureCount-.5)/rows)*h;
-   const prev=measureCount>1&&Number.isFinite(rowCenters[measureCount-1])?rowCenters[measureCount-1]:last-h/rows;
-   return last+(last-prev)/2;
+ const rowBoundary=p=>{
+  if(p<=0)return zeroY;
+  if(Number.isFinite(rowCenters[p])&&Number.isFinite(rowCenters[p+1])){
+   return (rowCenters[p]+rowCenters[p+1])/2;
   }
-  const q=measureCount-p+1;
-  return baseY(q);
+  return (p/rows)*h;
+ };
+ const yy=p=>{
+  if(!invertX)return p<=0?rowBoundary(0):baseY(p);
+  if(p<=0)return rowBoundary(measureCount);
+  return baseY(measureCount-p+1);
  };
 
  const scaleBox=canvas.parentElement&&canvas.parentElement.querySelector(".fieldScaleLabels");
@@ -144,8 +150,8 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
 
  for(let i=0;i<=20;i++){
   const v=min+i*cellStep,major=i%2===0;
-  g.strokeStyle=major?"#555":"#777";
-  g.lineWidth=major?1.25:.8;
+  g.strokeStyle=major?"#555":"#888";
+  g.lineWidth=major?1.25:.75;
   g.setLineDash(major?[]:[5,5]);
   g.beginPath();g.moveTo(xx(v),0);g.lineTo(xx(v),h);g.stroke();
  }
@@ -158,22 +164,26 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  }
 
  g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(0,0,w,h);
- g.lineWidth=3;
- g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
+ if(min<=0&&max>=0){
+  g.lineWidth=3;
+  g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
+ }
 
  g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
 
- if(cumulative.length){
-  g.strokeStyle="#000";g.lineWidth=3;g.setLineDash([]);
-  g.beginPath();
-  g.moveTo(xx(0),yy(0));
-  for(let i=1;i<cumulative.length;i++)g.lineTo(xx(cumulative[i].y),yy(cumulative[i].p));
-  g.stroke();
+ g.strokeStyle="#000";g.lineWidth=3;g.setLineDash([]);
+ g.beginPath();g.moveTo(xx(0),yy(0));
+ for(let i=1;i<cumulative.length;i++){
+  const d=cumulative[i];
+  g.lineTo(xx(d.y),yy(d.p));
+ }
+ g.stroke();
 
-  g.fillStyle="#000";
-  for(const d of cumulative){
-   g.beginPath();g.arc(xx(d.y),yy(d.p),3.8,0,Math.PI*2);g.fill();
-  }
+ g.fillStyle="#000";
+ g.beginPath();g.arc(xx(0),yy(0),3.8,0,Math.PI*2);g.fill();
+ for(let i=1;i<cumulative.length;i++){
+  const d=cumulative[i];
+  g.beginPath();g.arc(xx(d.y),yy(d.p),3.8,0,Math.PI*2);g.fill();
  }
 
  if(dev&&dev.line&&typeof dev.line.lineYAt==="function"&&measureCount>=1){
@@ -192,7 +202,6 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
   if(s>1)seg(1,s,true);
   seg(s,e,false);
   if(e<measureCount)seg(e,measureCount,true);
-  g.setLineDash([]);
  }
 
  g.restore();

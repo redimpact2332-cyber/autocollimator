@@ -536,18 +536,22 @@ function drawPdfReportCanvas(mode){
   for(let p=1;p<=ps.N;p++){const raw=pr.dev.line.lineYAt(p);const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;if(Number.isFinite(v))vals.push(v)}
  }
  const vmin=vals.length?Math.min(...vals):0,vmax=vals.length?Math.max(...vals):0;
- const absNeed=Math.max(20,Math.max(Math.abs(vmin),Math.abs(vmax))*1.10);
- const niceSteps=[1,2,5,10,20,50,100,200,500,1000];
- const cellStep=niceSteps.find(s=>s*10>=absNeed)||Math.ceil(absNeed/100)*10;
- const gmin=-cellStep*10,gmax=cellStep*10;
+ const rawSpan=Math.max(1,vmax-vmin);
+ const pad=Math.max(2,rawSpan*.10,Math.max(Math.abs(vmin),Math.abs(vmax))*.04);
+ let gmin=Math.min(0,vmin)-pad;
+ let gmax=Math.max(0,vmax)+pad;
+ if(gmax-gmin<40){
+  const mid=(gmin+gmax)/2;
+  gmin=mid-20;gmax=mid+20;
+ }
+ const cellStep=(gmax-gmin)/20;
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
+ const rowCenter=p=>plotY+((p-.5)/rows)*plotH;
+ const rowBoundary=p=>plotY+(p/rows)*plotH;
  const gy=p=>{
-  if(!invertX){
-   return p<=0?plotY:plotY+((p-.5)/rows)*plotH;
-  }
-  if(p<=0)return plotY+(ps.N/rows)*plotH;
-  const q=ps.N-p+1;
-  return plotY+((q-.5)/rows)*plotH;
+  if(!invertX)return p<=0?rowBoundary(0):rowCenter(p);
+  if(p<=0)return rowBoundary(ps.N);
+  return rowCenter(ps.N-p+1);
  };
 
  for(let i=0;i<=20;i++){
@@ -564,14 +568,18 @@ function drawPdfReportCanvas(mode){
  if(cumulative.length){
   x.save();x.beginPath();x.rect(graphX,plotY,graphW,plotH);x.clip();
   x.strokeStyle="#000";x.lineWidth=2.5;x.beginPath();
-  if(cumulative.length){
-   const p0=cumulative[0];
-   x.moveTo(gx(p0.y),gy(0));
-   for(let i=1;i<cumulative.length;i++)x.lineTo(gx(cumulative[i].y),gy(cumulative[i].p));
+  x.moveTo(gx(0),gy(0));
+  for(let i=1;i<cumulative.length;i++){
+   const d=cumulative[i];
+   x.lineTo(gx(d.y),gy(d.p));
   }
   x.stroke();
   x.fillStyle="#000";
-  for(const d of cumulative){x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill()}
+  x.beginPath();x.arc(gx(0),gy(0),3,0,Math.PI*2);x.fill();
+  for(let i=1;i<cumulative.length;i++){
+   const d=cumulative[i];
+   x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill();
+  }
   if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
    const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
    const seg=(a,b,dash)=>{const r1=pr.dev.line.lineYAt(a),r2=pr.dev.line.lineYAt(b);const y1=Number.isFinite(r1)?(invertY?-r1:r1):NaN,y2=Number.isFinite(r2)?(invertY?-r2:r2):NaN;if(!Number.isFinite(y1)||!Number.isFinite(y2))return;
