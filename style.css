@@ -214,3 +214,123 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
  .fieldMeta{height:25mm!important}
  .fieldFooter{height:12mm!important}
 }
+
+
+/* v9.1 スキャン原本準拠・現場標準レイアウト1 */
+.printSheet{
+  width:194mm!important;
+  height:281mm!important;
+  padding:6mm 9mm 7mm!important;
+  border:0!important;
+}
+.fieldPrintTitle{
+  height:8mm!important;
+  justify-content:flex-start!important;
+  font-size:0!important;
+}
+.fieldPrintTitle::after{
+  content:"";
+}
+.fieldPrintTitle .modeLabel{
+  right:0!important;
+  bottom:0!important;
+  font-size:7pt!important;
+}
+.fieldMeta{
+  height:18mm!important;
+  font-size:7.2pt!important;
+}
+.fieldMeta th,.fieldMeta td{
+  padding:.35mm .8mm!important;
+  line-height:1.05!important;
+}
+.fieldMeta th{width:10mm!important}
+.fieldMeta .nameCell{
+  text-align:left!important;
+  font-size:7.5pt!important;
+  font-weight:400!important;
+  padding-left:1mm!important;
+}
+.fieldBody{
+  grid-template-columns:41% 59%!important;
+  border-top:0!important;
+}
+.fieldTable{
+  font-size:6.4pt!important;
+}
+.fieldTable thead tr:first-child{height:5mm!important}
+.fieldTable thead tr:last-child{height:5mm!important}
+.fieldTable th,.fieldTable td{
+  border-width:.35mm!important;
+}
+.fieldTable .posCol{width:14%!important}
+.fieldTable .measureCol{width:18%!important}
+.fieldTable .avgCol{width:18%!important}
+.fieldTable .corrCol{width:15%!important}
+.fieldTable .cumCol{width:17%!important}
+.fieldGraphHeading{
+  height:10mm!important;
+  grid-template-rows:5mm 5mm!important;
+  border-bottom:.35mm solid #000!important;
+}
+.fieldGraphTitle{
+  font-size:7pt!important;
+  border-bottom:0!important;
+}
+.fieldScaleLabels{
+  font-size:6pt!important;
+}
+.fieldScaleLabels span{
+  font-size:6pt!important;
+}
+.fieldFooter{
+  height:12mm!important;
+  grid-template-columns:34% 18% 24% 24%!important;
+  font-size:6.5pt!important;
+}
+.fieldFooter>div:nth-child(2),
+.fieldFooter>div:nth-child(3),
+.fieldFooter>div:nth-child(4){
+  display:none!important;
+}
+.fieldFooter>div:first-child{
+  grid-column:2/3;
+}
+.fieldFooter .notePrint{
+  grid-column:3/5;
+}
+.scanFooterInfo{
+  height:11mm;
+  display:grid;
+  grid-template-columns:34% 18% 24% 24%;
+  border-left:.35mm solid #000;
+  border-right:.35mm solid #000;
+  border-bottom:.35mm solid #000;
+  font-size:6.5pt;
+}
+.scanFooterInfo>div{
+  border-right:.35mm solid #000;
+  display:flex;
+  align-items:center;
+  padding:0 1mm;
+}
+.scanFooterInfo>div:last-child{border-right:0}
+.scanFooterLeft{
+  display:grid!important;
+  grid-template-rows:repeat(3,1fr);
+  padding:0!important;
+}
+.scanFooterLeft span{
+  border-bottom:.25mm solid #000;
+  padding-left:1mm;
+  display:flex;
+  align-items:center;
+}
+.scanFooterLeft span:last-child{border-bottom:0}
+@media print{
+ .printSheet{
+  width:210mm!important;
+  height:296mm!important;
+  padding:12mm 18mm 12mm!important;
+ }
+}

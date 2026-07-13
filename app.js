@@ -249,7 +249,7 @@ function printLineCondition(mode,dev){
 function buildFieldPrintPage(mode){
  const ps=printStateForMode(mode);
  const pr=calcSeries(ps);
- const rowCount=Math.max(53,ps.N||0);
+ const rowCount=46;
  const numericRows=pr.rows.filter(r=>Number.isFinite(r.m));
  const avgRow=numericRows.length?numericRows[0].pos:1;
  const resultMap=new Map(pr.rows.map(r=>[r.pos,r]));
@@ -269,6 +269,7 @@ function buildFieldPrintPage(mode){
    <tr><th>製番</th><td>${state.meta.serial||""}</td><th rowspan="3">名称</th><td rowspan="3" class="nameCell">${state.meta.name||""}</td><th>測定日時</th><td>${formatPrintDate(state.meta.date||"")}</td></tr>
    <tr><th>形格</th><td>${state.meta.model||""}</td><th rowspan="2">測定時温度</th><td rowspan="2">外気温：${state.meta.outsideTemp||""}${state.meta.outsideTemp?" ℃":""}<br>機体温度：${state.meta.machineTemp||""}${state.meta.machineTemp?" ℃":""}</td></tr>
    <tr><th>測定者</th><td>${state.meta.operator||""}</td></tr>
+   <tr><th>測定器</th><td colspan="5"></td></tr>
   </tbody></table>
   <div class="fieldBody">
    <div class="fieldTableWrap"><table class="fieldTable">
@@ -284,9 +285,22 @@ function buildFieldPrintPage(mode){
     <canvas class="fieldPrintGraph" width="1000" height="1700"></canvas>
    </div>
   </div>
+  <div class="scanFooterInfo">
+   <div class="scanFooterLeft">
+    <span>摺動面全長　　mm</span>
+    <span>測定間隔　　　mm</span>
+    <span>測定位置</span>
+   </div>
+   <div>判定</div>
+   <div></div>
+   <div></div>
+  </div>
   <div class="fieldFooter">
-   <div>判定<b>${judgement}</b></div><div>平均<b>${fmt(pr.avg)}</b></div><div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
-   <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div><div class="notePrint">備考：${state.meta.note||""}</div>
+   <div>判定<b>${judgement}</b></div>
+   <div>平均<b>${fmt(pr.avg)}</b></div>
+   <div>最大差<b>${fmt(pr.dev.maxDev)}</b></div>
+   <div>赤線条件<b>${printLineCondition(mode,pr.dev)}</b></div>
+   <div class="notePrint">備考：${state.meta.note||""}</div>
   </div>`;
  requestAnimationFrame(()=>{
   const cv=page.querySelector(".fieldPrintGraph");
