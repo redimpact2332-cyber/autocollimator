@@ -529,23 +529,19 @@ function drawPdfReportCanvas(mode){
  pdfDrawText(x,"図示（単位 0.001mm）",graphX+graphW/2,bodyTop+18,graphW-20,19,"center","bold");
 
  const invertY=!!state.graphInvertY,invertX=!!state.graphInvertX;
- const cumulative=[{p:0,y:0},...pr.rows.filter(r=>Number.isFinite(r.cu)).map(r=>({p:r.pos,y:r.cu}))]
-  .map(d=>({p:d.p,y:invertY?-d.y:d.y}));
+ const cumulative=[{p:0,y:0},...pr.rows
+  .filter(r=>Number.isFinite(r.cu))
+  .map(r=>({p:r.pos,y:invertY?-r.cu:r.cu}))];
+
+ // 縮尺は累計値だけで決める。基準線の範囲外への延長値は含めない。
  const vals=cumulative.map(d=>d.y);
- if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
-  for(let p=1;p<=ps.N;p++){const raw=pr.dev.line.lineYAt(p);const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;if(Number.isFinite(v))vals.push(v)}
- }
- const vmin=vals.length?Math.min(...vals):0,vmax=vals.length?Math.max(...vals):0;
- const rawSpan=Math.max(1,vmax-vmin);
- const pad=Math.max(2,rawSpan*.10,Math.max(Math.abs(vmin),Math.abs(vmax))*.04);
- let gmin=Math.min(0,vmin)-pad;
- let gmax=Math.max(0,vmax)+pad;
- if(gmax-gmin<40){
-  const mid=(gmin+gmax)/2;
-  gmin=mid-20;gmax=mid+20;
- }
- const cellStep=(gmax-gmin)/20;
+ const maxAbs=Math.max(1,...vals.map(v=>Math.abs(v)));
+ const limit=Math.max(20,maxAbs*1.08);
+ const gmin=-limit,gmax=limit;
  const gx=v=>graphX+(v-gmin)/(gmax-gmin)*graphW;
+
+ // 原本と同じ座標：
+ // 位置0＝グラフ上端、位置1以降＝表の各行中央。
  const rowCenter=p=>plotY+((p-.5)/rows)*plotH;
  const rowBoundary=p=>plotY+(p/rows)*plotH;
  const gy=p=>{
@@ -554,40 +550,72 @@ function drawPdfReportCanvas(mode){
   return rowCenter(ps.N-p+1);
  };
 
+ // 横20マス。0線は中央固定。
  for(let i=0;i<=20;i++){
-  const v=gmin+i*cellStep,major=i%2===0;
+  const v=gmin+(gmax-gmin)*(i/20);
+  const major=i%2===0;
   x.strokeStyle=major?"#666":"#bbb";
   x.setLineDash(major?[]:[4,4]);
   line(gx(v),plotY,gx(v),bodyBottom,major?1.35:.7);
  }
  x.setLineDash([]);
- for(let p=0;p<=rows;p++){const yy=plotY+p/rows*plotH;x.strokeStyle="#999";line(graphX,yy,graphX+graphW,yy,.65)}
- if(gmin<=0&&gmax>=0){x.strokeStyle="#000";line(gx(0),plotY,gx(0),bodyBottom,2.5)}
-
-
- if(cumulative.length){
-  x.save();x.beginPath();x.rect(graphX,plotY,graphW,plotH);x.clip();
-  x.strokeStyle="#000";x.lineWidth=2.5;x.beginPath();
-  x.moveTo(gx(0),gy(0));
-  for(let i=1;i<cumulative.length;i++){
-   const d=cumulative[i];
-   x.lineTo(gx(d.y),gy(d.p));
-  }
-  x.stroke();
-  x.fillStyle="#000";
-  x.beginPath();x.arc(gx(0),gy(0),3,0,Math.PI*2);x.fill();
-  for(let i=1;i<cumulative.length;i++){
-   const d=cumulative[i];
-   x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill();
-  }
-  if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
-   const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1)),e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
-   const seg=(a,b,dash)=>{const r1=pr.dev.line.lineYAt(a),r2=pr.dev.line.lineYAt(b);const y1=Number.isFinite(r1)?(invertY?-r1:r1):NaN,y2=Number.isFinite(r2)?(invertY?-r2:r2):NaN;if(!Number.isFinite(y1)||!Number.isFinite(y2))return;
-    x.setLineDash(dash?[9,6]:[]);x.strokeStyle="#333";x.lineWidth=2;x.beginPath();x.moveTo(gx(y1),gy(a));x.lineTo(gx(y2),gy(b));x.stroke()};
-   if(s>1)seg(1,s,true);seg(s,e,false);if(e<ps.N)seg(e,ps.N,true);x.setLineDash([]);
-  }
-  x.restore();
+ for(let p=0;p<=rows;p++){
+  const yy=plotY+p/rows*plotH;
+  x.strokeStyle="#999";
+  line(graphX,yy,graphX+graphW,yy,.65);
  }
+ x.strokeStyle="#000";
+ line(gx(0),plotY,gx(0),bodyBottom,2.5);
+
+ x.save();
+ x.beginPath();
+ x.rect(graphX,plotY,graphW,plotH);
+ x.clip();
+
+ // 0→1を含め、累計値を位置順に一度だけ描画。
+ x.strokeStyle="#000";
+ x.lineWidth=2.5;
+ x.setLineDash([]);
+ x.beginPath();
+ x.moveTo(gx(0),gy(0));
+ for(let i=1;i<cumulative.length;i++){
+  const d=cumulative[i];
+  x.lineTo(gx(d.y),gy(d.p));
+ }
+ x.stroke();
+
+ x.fillStyle="#000";
+ x.beginPath();x.arc(gx(0),gy(0),3,0,Math.PI*2);x.fill();
+ for(let i=1;i<cumulative.length;i++){
+  const d=cumulative[i];
+  x.beginPath();x.arc(gx(d.y),gy(d.p),3,0,Math.PI*2);x.fill();
+ }
+
+ // 基準線は描画するが、縮尺計算には使わない。
+ if(pr.dev&&pr.dev.line&&typeof pr.dev.line.lineYAt==="function"){
+  const s=Math.max(1,Math.min(ps.N,Number(pr.dev.line.s)||1));
+  const e=Math.max(s,Math.min(ps.N,Number(pr.dev.line.e)||s));
+  const at=p=>{
+   const raw=pr.dev.line.lineYAt(p);
+   return Number.isFinite(raw)?(invertY?-raw:raw):NaN;
+  };
+  const seg=(a,b,dash)=>{
+   const y1=at(a),y2=at(b);
+   if(!Number.isFinite(y1)||!Number.isFinite(y2)||b<a)return;
+   x.setLineDash(dash?[9,6]:[]);
+   x.strokeStyle="#333";
+   x.lineWidth=2;
+   x.beginPath();
+   x.moveTo(gx(y1),gy(a));
+   x.lineTo(gx(y2),gy(b));
+   x.stroke();
+  };
+  if(s>1)seg(1,s,true);
+  seg(s,e,false);
+  if(e<ps.N)seg(e,ps.N,true);
+ }
+ x.restore();
+ x.setLineDash([]);
 
  const fy=bodyBottom,fw=[145,145,155,270,W-2*mg-715],fx=[mg];
  for(const w of fw)fx.push(fx[fx.length-1]+w);

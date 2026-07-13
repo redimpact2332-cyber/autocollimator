@@ -99,49 +99,32 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  const invertX=!!options.invertX;
 
  g.clearRect(0,0,w,h);
- g.fillStyle="#fff";g.fillRect(0,0,w,h);
+ g.fillStyle="#fff";
+ g.fillRect(0,0,w,h);
 
  const cumulative=[{p:0,y:0},...(options.cumulativeData||[])
   .filter(d=>d.p>=1&&d.p<=46&&Number.isFinite(d.y))
-  .sort((a,b)=>a.p-b.p)]
-  .map(d=>({p:d.p,y:invertY?-d.y:d.y}));
+  .sort((a,b)=>a.p-b.p)
+  .map(d=>({p:d.p,y:invertY?-d.y:d.y}))];
 
- const values=cumulative.map(d=>d.y);
- if(dev&&dev.line&&typeof dev.line.lineYAt==="function"){
-  for(let p=1;p<=measureCount;p++){
-   const raw=dev.line.lineYAt(p);
-   const v=Number.isFinite(raw)?(invertY?-raw:raw):NaN;
-   if(Number.isFinite(v))values.push(v);
-  }
- }
-
- const vmin=values.length?Math.min(...values):0;
- const vmax=values.length?Math.max(...values):0;
- const rawSpan=Math.max(1,vmax-vmin);
- const pad=Math.max(2,rawSpan*.10,Math.max(Math.abs(vmin),Math.abs(vmax))*.04);
- let min=Math.min(0,vmin)-pad;
- let max=Math.max(0,vmax)+pad;
- if(max-min<40){
-  const mid=(min+max)/2;
-  min=mid-20;max=mid+20;
- }
- const cellStep=(max-min)/20;
+ const maxAbs=Math.max(1,...cumulative.map(d=>Math.abs(d.y)));
+ const limit=Math.max(20,maxAbs*1.08);
+ const min=-limit,max=limit;
  const xx=v=>(v-min)/(max-min)*w;
 
  const baseY=p=>{
   if(Number.isFinite(rowCenters[p]))return rowCenters[p];
   return ((p-.5)/rows)*h;
  };
- const rowBoundary=p=>{
+ const boundaryY=p=>{
   if(p<=0)return zeroY;
-  if(Number.isFinite(rowCenters[p])&&Number.isFinite(rowCenters[p+1])){
+  if(Number.isFinite(rowCenters[p])&&Number.isFinite(rowCenters[p+1]))
    return (rowCenters[p]+rowCenters[p+1])/2;
-  }
-  return (p/rows)*h;
+  return p/rows*h;
  };
  const yy=p=>{
-  if(!invertX)return p<=0?rowBoundary(0):baseY(p);
-  if(p<=0)return rowBoundary(measureCount);
+  if(!invertX)return p<=0?boundaryY(0):baseY(p);
+  if(p<=0)return boundaryY(measureCount);
   return baseY(measureCount-p+1);
  };
 
@@ -149,7 +132,8 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  if(scaleBox)scaleBox.innerHTML="";
 
  for(let i=0;i<=20;i++){
-  const v=min+i*cellStep,major=i%2===0;
+  const v=min+(max-min)*(i/20);
+  const major=i%2===0;
   g.strokeStyle=major?"#555":"#888";
   g.lineWidth=major?1.25:.75;
   g.setLineDash(major?[]:[5,5]);
@@ -164,15 +148,15 @@ function drawFieldPrintGraph(canvas,data,dev,rowCount,options={}){
  }
 
  g.strokeStyle="#000";g.lineWidth=2;g.strokeRect(0,0,w,h);
- if(min<=0&&max>=0){
-  g.lineWidth=3;
-  g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
- }
+ g.lineWidth=3;
+ g.beginPath();g.moveTo(xx(0),0);g.lineTo(xx(0),h);g.stroke();
 
- g.save();g.beginPath();g.rect(0,0,w,h);g.clip();
+ g.save();
+ g.beginPath();g.rect(0,0,w,h);g.clip();
 
  g.strokeStyle="#000";g.lineWidth=3;g.setLineDash([]);
- g.beginPath();g.moveTo(xx(0),yy(0));
+ g.beginPath();
+ g.moveTo(xx(0),yy(0));
  for(let i=1;i<cumulative.length;i++){
   const d=cumulative[i];
   g.lineTo(xx(d.y),yy(d.p));
