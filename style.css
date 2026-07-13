@@ -637,3 +637,41 @@ body.dark .blankBtn{background:#4b3b15!important;color:#ffe5a2!important;border-
   .originalFooter{height:8mm!important}
   .fieldGraphHeading{height:7.5mm!important;grid-template-rows:3.8mm 3.7mm!important}
 }
+
+
+/* v9.5 空白2ページ目の発生を防止 */
+@media print{
+  /* 表示中の1測定だけ印刷する場合、強制改ページを完全解除 */
+  body.printing-selected .printSheet.active{
+    display:flex!important;
+    page-break-after:auto!important;
+    break-after:auto!important;
+    page-break-before:auto!important;
+    break-before:auto!important;
+  }
+  body.printing-selected .printSheet:not(.active){
+    display:none!important;
+    page-break-after:auto!important;
+    break-after:auto!important;
+  }
+
+  /* 4測定印刷時だけページ区切りを使う */
+  body.printing-all .printSheet{
+    display:flex!important;
+    page-break-after:always!important;
+    break-after:page!important;
+  }
+  body.printing-all .printSheet:last-child{
+    page-break-after:auto!important;
+    break-after:auto!important;
+  }
+
+  /* AirPrintの実印刷領域に余裕を持たせる */
+  body.printing-selected .printSheet{
+    height:268mm!important;
+    max-height:268mm!important;
+    padding-top:4mm!important;
+    padding-bottom:4mm!important;
+    overflow:hidden!important;
+  }
+}
