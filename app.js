@@ -345,11 +345,72 @@ function showShot(){
  $("inputView").classList.add("hidden");$("shotView").classList.remove("hidden");
  renderPrintPages();scrollTo({top:0,behavior:"auto"});
 }
+function preparePrintOnlyHost(allModes){
+ const host=$("printOnlyHost");
+ host.innerHTML="";
+ const modes=allModes?[1,2,3,4]:[printPreviewMode];
+
+ modes.forEach((mode,idx)=>{
+  const source=document.querySelector(`.printSheet[data-mode="${mode}"]`);
+  if(!source)return;
+
+  const stage=document.createElement("div");
+  stage.className="printStage";
+
+  const clone=source.cloneNode(true);
+  clone.classList.add("active");
+  clone.style.display="flex";
+
+  // AirPrintが1ページ超過と判定しないよう、印刷専用DOMだけ縮小。
+  const scale=0.94;
+  stage.style.transform=`scale(${scale})`;
+  stage.style.width=`${210/scale}mm`;
+  stage.style.height=`${297/scale}mm`;
+
+  if(allModes){
+   stage.style.pageBreakAfter=idx===modes.length-1?"auto":"always";
+   stage.style.breakAfter=idx===modes.length-1?"auto":"page";
+  }
+
+  stage.appendChild(clone);
+  host.appendChild(stage);
+
+  // CanvasはcloneNodeで内容が複製されないため、描き直す。
+  const ps=printStateForMode(mode);
+  const pr=calcSeries(ps);
+  requestAnimationFrame(()=>{
+   const cv=clone.querySelector(".fieldPrintGraph");
+   const trList=[...clone.querySelectorAll(".fieldTable tbody tr")];
+   if(!cv)return;
+   const cvRect=cv.getBoundingClientRect();
+   const scaleY=cv.height/Math.max(1,cvRect.height);
+   const rowCenters={};
+   trList.forEach((tr,i)=>{
+    const r=tr.getBoundingClientRect();
+    rowCenters[i+1]=((r.top+r.bottom)/2-cvRect.top)*scaleY;
+   });
+   const first=trList[0]?.getBoundingClientRect();
+   const zeroY=first?(first.top-cvRect.top)*scaleY:0;
+   drawFieldPrintGraph(cv,pr.data,pr.dev,46,{
+    measureCount:ps.N,
+    cumulativeData:pr.rows.map(r=>({p:r.pos,y:r.cu})),
+    rowCenters,
+    zeroY,
+    invertY:state.graphInvertY,
+    invertX:state.graphInvertX
+   });
+  });
+ });
+}
+
 function runPrint(allModes){
  document.body.classList.remove("printing-all","printing-selected");
- document.body.classList.add(allModes?"printing-all":"printing-selected");
- setTimeout(()=>window.print(),120);
- setTimeout(()=>document.body.classList.remove("printing-all","printing-selected"),1200);
+ preparePrintOnlyHost(allModes);
+ setTimeout(()=>window.print(),350);
+ setTimeout(()=>{
+  const host=$("printOnlyHost");
+  if(host)host.innerHTML="";
+ },1800);
 }
 function showInput(){$("shotView").classList.add("hidden");$("inputView").classList.remove("hidden");scrollToEditPositionStable()}
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
